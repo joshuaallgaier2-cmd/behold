@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LDS_MUSIC_DATABASE } from '../data/musicData';
@@ -43,7 +44,10 @@ export default function HomeScreen() {
           data={LDS_MUSIC_DATABASE.filter(song => song.category === selectedCategory)}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.row} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push({
+  pathname: '/song-details',
+  params: { title: item.title, number: item.number, sourceBook: item.sourceBook }
+})}>
               <View style={styles.rowContent}>
                 <Text style={styles.songNumber}>#{item.number.toString().padStart(3, '0')}</Text>
                 <Text style={styles.songTitle}>{item.title}</Text>

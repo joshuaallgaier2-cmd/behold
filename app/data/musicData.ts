@@ -9,27 +9,11 @@ export interface Song {
 
 export const LDS_MUSIC_DATABASE: Song[] = [
   {
-    id: 'hymn-1',
-    number: 1,
-    title: 'The Morning Breaks',
+    id: 'hymn-173',
+    number: 173,
+    title: 'While of These Emblems We Partake',
     category: 'hymn',
     sourceBook: 'Hymns (Official)',
-    pages: ['the_morning_breaks_p1.png']
-  },
-  {
-    id: 'children-1',
-    number: 2,
-    title: 'I Am a Child of God',
-    category: 'children',
-    sourceBook: 'Children\'s Songbook',
-    pages: ['child_of_god_p1.png', 'child_of_god_p2.png']
-  },
-  {
-    id: 'youth-2026',
-    number: 2026,
-    title: 'Strive to Be Track',
-    category: 'youth',
-    sourceBook: 'Youth Album 2026',
-    pages: ['youth_track_p1.png']
+    pages: ['while_of_these_emblems_we_partake_saul.jpg']
   }
 ];
