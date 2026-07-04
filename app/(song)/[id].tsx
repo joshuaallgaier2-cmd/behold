@@ -1,4 +1,4 @@
-import { HYMN_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from '@/app/data/musicData';
+import { BEHOLD_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from '@/app/data/musicData';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -17,7 +17,7 @@ export default function SongDetailsScreen() {
 
   // Safe reference for the current image target using the asset registry
   const activePageKey = activeSong?.pageKeys[currentPageIndex];
-  const resolvedImageAsset = activePageKey ? HYMN_ASSET_REGISTRY[activePageKey] : null;
+  const resolvedImageAsset = activePageKey ? BEHOLD_ASSET_REGISTRY[activePageKey] : null;
 
   const handlePreviousPage = () => {
     if (currentPageIndex > 0) {

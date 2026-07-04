@@ -1,63 +1,140 @@
-import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LDS_MUSIC_DATABASE } from '../data/musicData';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+    AppState,
+    FlatList,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
+} from 'react-native';
+
+import { LDS_MUSIC_DATABASE, Song } from '../data/musicData';
+import {
+    initializeBeholdAudioConfiguration,
+    safelyTeardownActiveAudioPlayback,
+} from '../services/audioEngine';
+
+type Category = 'hymn' | 'children' | 'youth';
 
 export default function HomeScreen() {
-  const [selectedCategory, setSelectedCategory] = useState<'hymn' | 'children' | 'youth'>('hymn');
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isTabletOrChromebook = width > 600;
+  const numColumns = isTabletOrChromebook ? 3 : 1;
+  const itemWidth = isTabletOrChromebook ? (width - 48) / 3 : width - 32;
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<Category>('hymn');
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    void initializeBeholdAudioConfiguration();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        void safelyTeardownActiveAudioPlayback();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      void safelyTeardownActiveAudioPlayback();
+    };
+  }, []);
+
+  const filteredSongs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return LDS_MUSIC_DATABASE.filter((song) => {
+      if (song.category !== activeTab) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return (
+        String(song.number).includes(query) ||
+        song.title.toLowerCase().includes(query) ||
+        song.sourceBook.toLowerCase().includes(query)
+      );
+    });
+  }, [activeTab, searchQuery]);
+
+  const renderItem = ({ item }: { item: Song }) => (
+    <TouchableOpacity
+      style={[styles.row, { width: itemWidth }]}
+      activeOpacity={0.86}
+      onPress={() => {
+        if (item.pageKeys.length > 0) {
+          setNotice(null);
+          router.push({ pathname: '/song-details', params: { number: String(item.number) } });
+          return;
+        }
+
+        setNotice('Sheet music assets are pending upload for this selection.');
+      }}
+    >
+      <View style={styles.rowContent}>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{item.number}</Text>
+        </View>
+        <View style={styles.textBlock}>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.meta}>{item.sourceBook}</Text>
+          {item.pageKeys.length === 0 ? (
+            <Text style={styles.pending}>Sheet music assets pending upload</Text>
+          ) : (
+            <Text style={styles.ready}>Ready to view and play</Text>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <Text style={styles.header}>BEHOLD</Text>
-
-        {/* Category Tabs */}
-        <View style={styles.buttonContainer}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#121212' }}>
+      <View style={styles.headerTray}>
+        {(['hymn', 'children', 'youth'] as const).map((tab) => (
           <TouchableOpacity
-            style={styles.button}
-            activeOpacity={0.7}
-            onPress={() => setSelectedCategory('hymn')}
+            key={tab}
+            onPress={() => setActiveTab(tab)}
+            style={[styles.navButton, activeTab === tab && styles.navButtonActive]}
           >
-            <Text style={styles.buttonText}>Hymns</Text>
+            <Text style={[styles.navText, activeTab === tab && styles.navTextActive]}>{tab.toUpperCase()}</Text>
           </TouchableOpacity>
+        ))}
+      </View>
 
-          <TouchableOpacity
-            style={styles.button}
-            activeOpacity={0.7}
-            onPress={() => setSelectedCategory('children')}
-          >
-            <Text style={styles.buttonText}>Children's</Text>
-          </TouchableOpacity>
+      <TextInput
+        placeholder="Search by title, number, or book"
+        placeholderTextColor="#666"
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        style={styles.searchInput}
+      />
 
-          <TouchableOpacity
-            style={styles.button}
-            activeOpacity={0.7}
-            onPress={() => setSelectedCategory('youth')}
-          >
-            <Text style={styles.buttonText}>Youth</Text>
-          </TouchableOpacity>
+      {notice ? (
+        <View style={styles.noticeCard}>
+          <Text style={styles.noticeText}>{notice}</Text>
         </View>
+      ) : null}
 
-        {/* Song List */}
-        <FlatList
-          data={LDS_MUSIC_DATABASE.filter(song => song.category === selectedCategory)}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.row} activeOpacity={0.7} onPress={() => router.push({
-  pathname: '/song-details',
-  params: { title: item.title, number: item.number, sourceBook: item.sourceBook }
-})}>
-              <View style={styles.rowContent}>
-                <Text style={styles.songNumber}>#{item.number.toString().padStart(3, '0')}</Text>
-                <Text style={styles.songTitle}>{item.title}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.listContent}
-        />
-      </SafeAreaView>
-    </View>
+      <FlatList
+        data={filteredSongs}
+        renderItem={renderItem}
+        keyExtractor={(song) => song.id}
+        numColumns={numColumns}
+        key={isTabletOrChromebook ? 'grid-3' : 'list-1'}
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={isTabletOrChromebook ? styles.columnWrapper : undefined}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -65,73 +142,108 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#121212',
-    padding: 20,
   },
-  safeArea: {
+  headerTray: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#171717',
+  },
+  navButton: {
     flex: 1,
-  },
-  header: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 4,
-    marginBottom: 40,
-    textAlign: 'center',
-  },
-  buttonContainer: {
-    gap: 16,
-    marginBottom: 24,
-  },
-  button: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    marginHorizontal: 4,
+    paddingVertical: 10,
+    borderRadius: 999,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    backgroundColor: '#1F1F1F',
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#ffffff',
-    textAlign: 'center',
+  navButtonActive: {
+    backgroundColor: '#FFD700',
+  },
+  navText: {
+    color: '#BDBDBD',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  navTextActive: {
+    color: '#111111',
+  },
+  searchInput: {
+    backgroundColor: '#1E1E1E',
+    color: '#FFF',
+    padding: 14,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  noticeCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  noticeText: {
+    color: '#FFD700',
+    fontSize: 13,
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 24,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
   },
   row: {
-    backgroundColor: '#1e1e1e',
+    margin: 8,
+    backgroundColor: '#1B1B1B',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#333333',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    borderColor: '#2A2A2A',
   },
   rowContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
   },
-  songNumber: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ffffff',
-    minWidth: 50,
-    textAlign: 'right',
+  badge: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  songTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#ffffff',
+  badgeText: {
+    color: '#111111',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  textBlock: {
     flex: 1,
   },
-  listContent: {
-    paddingBottom: 20,
+  title: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  meta: {
+    color: '#AAA',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  pending: {
+    color: '#FFCC00',
+    fontSize: 12,
+  },
+  ready: {
+    color: '#7BEA8A',
+    fontSize: 12,
   },
 });

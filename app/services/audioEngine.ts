@@ -1,87 +1,49 @@
-/**
- * Behold Audio Engine - Global Audio Isolation & Application Lifecycle Manager
- * 
- * Enforces absolute priority over audio hardware layers:
- * - Claims exclusive, single-source playback (no mixing/ducking with background players)
- * - Respects iOS/iPad hardware mute toggle and Control Center silent selection
- * - Terminates audio processing immediately when app loses focus
- */
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
-import { InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
-import * as AudioModule from 'expo-av/Audio';
+let activeSoundInstance: Audio.Sound | null = null;
 
-/**
- * Initialize Behold Audio Configuration
- * 
- * Wraps the following settings parameters for exclusive audio isolation:
- * - playsInSilentModeIOS: false -> Tells iOS/iPad to mute when physical side switch or Control Center silent toggle is ON
- * - interruptionModeIOS: InterruptionModeIOS.DoNotMix -> Commands iOS to disconnect other background audio providers
- * - interruptionModeAndroid: InterruptionModeAndroid.DoNotMix -> Standardizes identical exclusive behavior across Android/ChromeOS
- * - shouldDuckAndroid: false -> Blocks incoming third-party notification alerts from interacting with volume parameters
- * - staysActiveInBackground: false -> Hard-kills device sound pipelines when focus boundaries change
- */
 export async function initializeBeholdAudioConfiguration(): Promise<void> {
-  await AudioModule.setAudioModeAsync({
-    playsInSilentModeIOS: false,
-    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-    shouldDuckAndroid: false,
-    staysActiveInBackground: false,
-  });
+  try {
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: false,
+      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+      shouldDuckAndroid: false,
+      staysActiveInBackground: false,
+    });
+  } catch (error) {
+    console.warn('initializeBeholdAudioConfiguration failed', error);
+  }
 }
 
-/**
- * Active Sound Instance Container
- * Holds the currently active audio playback reference for safe teardown operations.
- */
-let activeSoundInstance: any = null;
+export async function safelyTeardownActiveAudioPlayback(): Promise<void> {
+  if (!activeSoundInstance) {
+    return;
+  }
 
-/**
- * Export tracking reference container holding the current active Sound instance
- */
-export const getActiveSound = (): any => {
-  return activeSoundInstance;
-};
+  try {
+    await activeSoundInstance.stopAsync();
+    await activeSoundInstance.unloadAsync();
+  } catch (error) {
+    console.warn('Audio subsystem teardown warning:', error);
+  } finally {
+    activeSoundInstance = null;
+  }
+}
 
-/**
- * Set the active sound instance for tracking purposes
- */
-export function setActiveSound(sound: any): void {
+export async function playTrackFromRegistry(
+  assetSource: any,
+  onPlaybackStatusUpdate: (status: any) => void,
+): Promise<void> {
+  await safelyTeardownActiveAudioPlayback();
+  const { sound } = await Audio.Sound.createAsync(assetSource, { shouldPlay: true }, onPlaybackStatusUpdate);
   activeSoundInstance = sound;
 }
 
-/**
- * Safely Terminate Active Audio Playback
- * 
- * Calls .stopAsync() immediately followed by .unloadAsync() to completely clear memory buckets
- * when an audio row is deselected or interrupted. Ensures no background processing or caching
- * routines survive a focus loss.
- */
-export async function safelyTeardownActiveAudioPlayback(): Promise<void> {
-  if (activeSoundInstance) {
-    try {
-      await activeSoundInstance.stopAsync();
-    } catch (error) {
-      // Silently handle stop errors during teardown
-    }
-
-    try {
-      await activeSoundInstance.unloadAsync();
-    } catch (error) {
-      // Silently handle unload errors during teardown
-    }
-
-    activeSoundInstance = null;
+export async function modifyActivePlaybackRate(speedMultiplier: number): Promise<void> {
+  if (!activeSoundInstance) {
+    return;
   }
 
-  // Always reset to ensure clean state even if no sound was playing
-  activeSoundInstance = null;
-}
-
-/**
- * Initialize audio configuration when app starts
- * Call this in your app's initialization flow
- */
-export async function initializeAudioEngine(): Promise<void> {
-  await initializeBeholdAudioConfiguration();
+  await activeSoundInstance.setRateAsync(speedMultiplier, true, Audio.PitchCorrectionQuality.High);
 }
