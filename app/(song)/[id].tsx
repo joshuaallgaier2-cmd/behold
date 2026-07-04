@@ -1,13 +1,13 @@
+import { HYMN_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from '@/app/data/musicData';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HYMN_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from './data/musicData';
 
 export default function SongDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const number = params.number as string;
+  const number = params.id as string;
 
   // Look up the active song by matching the 'number' parameter
   const activeSong = LDS_MUSIC_DATABASE.find(s => s.number === Number(number));

@@ -9,7 +9,7 @@ export interface Song {
 
 // Strictly evaluate all assets using hardcoded literal strings so Metro compiles cleanly
 export const HYMN_ASSET_REGISTRY: Record<string, any> = {
-  'hymn_173_p1': require('../../assets/hymn_173_p1.png.jpg'),
+  'hymn_173_p1': require('../../assets/hymn_173_p1.png'),
 };
 
 export const LDS_MUSIC_DATABASE: Song[] = [
