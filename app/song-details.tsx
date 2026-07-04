@@ -1,52 +1,100 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { AppState, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { BEHOLD_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from './data/musicData';
+import ScrollingCanvas from './components/ScrollingCanvas';
+import { INTERACTIVE_MUSIC_DATABASE } from './data/musicData';
 import {
-  modifyActivePlaybackRate,
-  playTrackFromRegistry,
-  safelyTeardownActiveAudioPlayback,
+    initializeBeholdAudioConfiguration,
+    setVocalTrackMuteState,
+    startSyncedDualTracks,
+    terminateAudioSession,
 } from './services/audioEngine';
-
-const SPEED_OPTIONS = [0.75, 1.0, 1.25, 1.5];
 
 export default function SongDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const rawNumber = Array.isArray(params.number) ? params.number[0] : params.number;
   const numericNumber = Number(rawNumber ?? 0);
-  const activeSong = LDS_MUSIC_DATABASE.find((song) => song.number === numericNumber);
+  const activeSong = INTERACTIVE_MUSIC_DATABASE.find((song) => song.number === numericNumber) ?? INTERACTIVE_MUSIC_DATABASE[0];
 
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [playbackTime, setPlaybackTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
-  const [playbackProgress, setPlaybackProgress] = useState(0);
-  const [trackTimeDisplay, setTrackTimeDisplay] = useState('00:00 / 00:00');
-
-  const activePageKey = activeSong?.pageKeys[currentPageIndex];
-  const resolvedImageAsset = activePageKey ? BEHOLD_ASSET_REGISTRY[activePageKey] : null;
-  const resolvedAudioAsset = activeSong?.audioKey ? BEHOLD_ASSET_REGISTRY[activeSong.audioKey] : null;
-  const pageCount = activeSong?.pageKeys.length ?? 0;
-  const isFirstPage = currentPageIndex === 0;
-  const isLastPage = pageCount === 0 || currentPageIndex >= pageCount - 1;
+  const [enableVocals, setEnableVocals] = useState(false);
+  const [detectedNoteText, setDetectedNoteText] = useState('Listening...');
 
   useEffect(() => {
-    setCurrentPageIndex(0);
-    setIsPlaying(false);
-    setPlaybackSpeed(1.0);
-    setPlaybackProgress(0);
-    setTrackTimeDisplay('00:00 / 00:00');
-  }, [numericNumber]);
+    void initializeBeholdAudioConfiguration();
 
-  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        void terminateAudioSession();
+        setIsPlaying(false);
+        setPlaybackTime(0);
+        setDetectedNoteText('Listening...');
+      }
+    });
+
     return () => {
-      void safelyTeardownActiveAudioPlayback();
+      subscription.remove();
+      void terminateAudioSession();
     };
   }, []);
 
-  const formatTimeDisplay = (millis: number) => {
+  useEffect(() => {
+    setPlaybackTime(0);
+    setIsPlaying(false);
+    setEnableVocals(false);
+    setDetectedNoteText('Listening...');
+  }, [numericNumber]);
+
+  const handleBackPress = async () => {
+    await terminateAudioSession();
+    router.back();
+  };
+
+  const handleTogglePlayback = async () => {
+    if (isPlaying) {
+      await terminateAudioSession();
+      setIsPlaying(false);
+      setPlaybackTime(0);
+      setDetectedNoteText('Listening...');
+      return;
+    }
+
+    if (!activeSong) {
+      return;
+    }
+
+    try {
+      setDetectedNoteText('Listening...');
+      await startSyncedDualTracks(activeSong.accompAudio, activeSong.vocalAudio, enableVocals, (millis: number) => {
+        setPlaybackTime(millis);
+      });
+      setIsPlaying(true);
+    } catch (error) {
+      console.warn('Failed to start synced tracks', error);
+      setIsPlaying(false);
+      setPlaybackTime(0);
+      setDetectedNoteText('Listening...');
+    }
+  };
+
+  const handleVocalToggle = async (nextValue: boolean) => {
+    setEnableVocals(nextValue);
+
+    if (!isPlaying) {
+      return;
+    }
+
+    try {
+      await setVocalTrackMuteState(!nextValue);
+    } catch (error) {
+      console.warn('Failed to toggle vocal track', error);
+    }
+  };
+
+  const formatPlaybackTime = (millis: number) => {
     if (!millis || Number.isNaN(millis)) {
       return '00:00';
     }
@@ -56,139 +104,57 @@ export default function SongDetailsScreen() {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handlePreviousPage = () => {
-    if (!isFirstPage) {
-      setCurrentPageIndex((previous) => previous - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (!isLastPage) {
-      setCurrentPageIndex((previous) => previous + 1);
-    }
-  };
-
-  const handleTogglePlayback = async () => {
-    if (isPlaying) {
-      await safelyTeardownActiveAudioPlayback();
-      setIsPlaying(false);
-      setPlaybackProgress(0);
-      setTrackTimeDisplay('00:00 / 00:00');
-      return;
-    }
-
-    if (!resolvedAudioAsset) {
-      return;
-    }
-
-    try {
-      await playTrackFromRegistry(resolvedAudioAsset, (status: any) => {
-        if (!status?.isLoaded) {
-          return;
-        }
-
-        if (status.didJustFinish) {
-          setIsPlaying(false);
-          setPlaybackProgress(0);
-          setTrackTimeDisplay('00:00 / 00:00');
-          return;
-        }
-
-        const nextProgress = status.durationMillis
-          ? (status.positionMillis ?? 0) / status.durationMillis
-          : 0;
-        const nextPosition = formatTimeDisplay(status.positionMillis ?? 0);
-        const nextDuration = formatTimeDisplay(status.durationMillis ?? 0);
-
-        setPlaybackProgress(Math.min(1, Math.max(0, nextProgress)));
-        setTrackTimeDisplay(`${nextPosition} / ${nextDuration}`);
-        setIsPlaying(Boolean(status.isPlaying));
-      });
-      setIsPlaying(true);
-    } catch (error) {
-      console.warn('Failed to play audio', error);
-      setIsPlaying(false);
-      setPlaybackProgress(0);
-      setTrackTimeDisplay('00:00 / 00:00');
-    }
-  };
-
-  const handleSpeedChange = async (nextSpeed: number) => {
-    setPlaybackSpeed(nextSpeed);
-
-    if (!isPlaying) {
-      return;
-    }
-
-    try {
-      await modifyActivePlaybackRate(nextSpeed);
-    } catch (error) {
-      console.warn('Failed to update playback speed', error);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backText}>← Back to List</Text>
+      <View style={styles.headerBar}>
+        <TouchableOpacity style={styles.backButton} onPress={() => void handleBackPress()}>
+          <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.titleText}>{activeSong?.title ?? 'Song details'}</Text>
+        <Text style={styles.titleText}>{activeSong?.title ?? 'Practice Mode'}</Text>
       </View>
 
       <View style={styles.content}>
-        {resolvedImageAsset ? (
-          <Image
-            source={resolvedImageAsset}
-            style={[styles.image, { width: width - 32, height: Math.max(260, width * 0.72) }]}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.placeholderBox}>
-            <Text style={styles.placeholderText}>Sheet page is loading or not yet uploaded.</Text>
-          </View>
-        )}
+        <View style={styles.heroPanel}>
+          <Text style={styles.heroTitle}>Interactive Music Trainer</Text>
+          <Text style={styles.heroSubtitle}>Follow the paced note lane, then sing or play along with the synchronized mix.</Text>
+        </View>
 
-        <View style={styles.mediaPanel}>
-          <TouchableOpacity onPress={handleTogglePlayback} style={styles.playButton}>
-            <Text style={styles.playButtonText}>{isPlaying ? '■ Stop Audio' : '▶ Play Audio'}</Text>
-          </TouchableOpacity>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.round(playbackProgress * 100)}%` }]} />
-          </View>
-          <Text style={styles.timeText}>{trackTimeDisplay}</Text>
-
-          <View style={styles.speedRow}>
-            {SPEED_OPTIONS.map((speed) => (
-              <TouchableOpacity
-                key={speed}
-                style={[styles.speedChip, playbackSpeed === speed && styles.speedChipActive]}
-                onPress={() => void handleSpeedChange(speed)}
-              >
-                <Text style={[styles.speedText, playbackSpeed === speed && styles.speedTextActive]}>
-                  {speed.toFixed(2)}×
-                </Text>
-              </TouchableOpacity>
-            ))}
+        <View style={styles.controlPanel}>
+          <Text style={styles.panelLabel}>Mix</Text>
+          <View style={styles.toggleRow}>
+            <TouchableOpacity
+              style={[styles.toggleButton, !enableVocals && styles.toggleButtonActive]}
+              onPress={() => void handleVocalToggle(false)}
+            >
+              <Text style={[styles.toggleText, !enableVocals && styles.toggleTextActive]}>Accompaniment Only</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, enableVocals && styles.toggleButtonActive]}
+              onPress={() => void handleVocalToggle(true)}
+            >
+              <Text style={[styles.toggleText, enableVocals && styles.toggleTextActive]}>Include Vocal Choir</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.pageRow}>
-          <TouchableOpacity
-            style={[styles.navButton, isFirstPage && styles.navButtonDisabled]}
-            onPress={handlePreviousPage}
-            disabled={isFirstPage}
-          >
-            <Text style={[styles.navButtonText, isFirstPage && styles.navButtonTextDisabled]}>Previous Page</Text>
-          </TouchableOpacity>
+        <View style={styles.canvasPanel}>
+          <ScrollingCanvas
+            notes={activeSong?.notes ?? []}
+            currentTimeMs={playbackTime}
+            introDurationMs={activeSong?.introDurationMs ?? 0}
+          />
+        </View>
 
-          <TouchableOpacity
-            style={[styles.navButton, isLastPage && styles.navButtonDisabled]}
-            onPress={handleNextPage}
-            disabled={isLastPage}
-          >
-            <Text style={[styles.navButtonText, isLastPage && styles.navButtonTextDisabled]}>Next Page</Text>
+        <View style={styles.bottomPanel}>
+          <TouchableOpacity style={styles.playButton} onPress={() => void handleTogglePlayback()}>
+            <Text style={styles.playButtonText}>{isPlaying ? '■ Stop Practice' : '▶ Start Practice'}</Text>
           </TouchableOpacity>
+          <Text style={styles.timeText}>Playback: {formatPlaybackTime(playbackTime)}</Text>
+          <View style={styles.detectionCard}>
+            <Text style={styles.detectionLabel}>Microphone Note Detector</Text>
+            <Text style={styles.detectionValue}>{detectedNoteText}</Text>
+            {/* Placeholder for future native pitch detection integration. */}
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -200,25 +166,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#121212',
   },
-  header: {
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#292929',
   },
   backButton: {
     marginRight: 12,
   },
-  backText: {
+  backButtonText: {
     color: '#FFD700',
     fontSize: 16,
     fontWeight: '700',
   },
   titleText: {
     flex: 1,
-    color: '#F2F2F2',
+    color: '#F5F5F5',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'right',
@@ -226,33 +192,78 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    justifyContent: 'space-between',
+    gap: 12,
   },
-  image: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    alignSelf: 'center',
-  },
-  placeholderBox: {
-    minHeight: 280,
-    borderRadius: 12,
-    backgroundColor: '#1E1E1E',
+  heroPanel: {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#1A1A1A',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#2D2D2D',
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    color: '#B6B6B6',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  controlPanel: {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+  },
+  panelLabel: {
+    color: '#FFD700',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#333333',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    backgroundColor: '#222222',
   },
-  placeholderText: {
-    color: '#888',
-    fontSize: 15,
-    textAlign: 'center',
+  toggleButtonActive: {
+    backgroundColor: '#FFD700',
+    borderColor: '#FFD700',
   },
-  mediaPanel: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 12,
+  toggleText: {
+    color: '#F2F2F2',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  toggleTextActive: {
+    color: '#111111',
+  },
+  canvasPanel: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#121212',
+  },
+  bottomPanel: {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+    gap: 10,
   },
   playButton: {
     backgroundColor: '#FFD700',
@@ -260,78 +271,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
   },
   playButtonText: {
     color: '#111111',
     fontSize: 15,
     fontWeight: '700',
   },
-  progressTrack: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#2A2A2A',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FFD700',
-  },
   timeText: {
-    color: '#CFCFCF',
+    color: '#D1D1D1',
     fontSize: 13,
-    marginTop: 8,
-    marginBottom: 10,
     textAlign: 'center',
   },
-  speedRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  speedChip: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 999,
+  detectionCard: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
-    alignItems: 'center',
-    backgroundColor: '#1B1B1B',
+    borderColor: '#2D2D2D',
   },
-  speedChipActive: {
-    backgroundColor: '#FFD700',
-    borderColor: '#FFD700',
-  },
-  speedText: {
-    color: '#F2F2F2',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  speedTextActive: {
-    color: '#111111',
-  },
-  pageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  navButton: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  navButtonDisabled: {
-    opacity: 0.5,
-  },
-  navButtonText: {
+  detectionLabel: {
     color: '#FFD700',
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
   },
-  navButtonTextDisabled: {
-    color: '#666',
+  detectionValue: {
+    color: '#F2F2F2',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
