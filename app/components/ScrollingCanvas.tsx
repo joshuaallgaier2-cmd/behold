@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { NoteEvent } from '../data/musicData';
+import { NoteEvent } from '../../src/data/musicData';
 
 type ScrollingCanvasProps = {
   notes: NoteEvent[];
@@ -9,8 +9,8 @@ type ScrollingCanvasProps = {
   introDurationMs: number;
 };
 
-const PIXELS_PER_MS = 0.06;
-const HIT_LINE_X = 72;
+const PIXELS_PER_MS = 0.07;
+const HIT_LINE_X = 86;
 
 export default function ScrollingCanvas({ notes, currentTimeMs, introDurationMs }: ScrollingCanvasProps) {
   const isIntroPhase = currentTimeMs < introDurationMs;
@@ -19,16 +19,18 @@ export default function ScrollingCanvas({ notes, currentTimeMs, introDurationMs 
     <View style={styles.canvasShell}>
       <View style={styles.gridBackground}>
         <View style={styles.hitLine} />
+        <View style={styles.guidelineRow} />
+        <View style={styles.guidelineRowBottom} />
         {isIntroPhase ? (
           <View style={styles.countdownOverlay}>
-            <Text style={styles.countdownText}>Intro Playing - Get Ready!</Text>
+            <Text style={styles.countdownText}>Intro Pre-roll Section Playing - Prepare Hands!</Text>
           </View>
         ) : null}
         {notes.map((note, index) => {
           const offset = note.startTimeMs - currentTimeMs;
           const x = HIT_LINE_X + offset * PIXELS_PER_MS;
-          const width = Math.max(36, note.durationMs * 0.04);
-          const isPast = x + width < HIT_LINE_X - 10;
+          const width = Math.max(34, note.durationMs * 0.035);
+          const isPast = x + width < HIT_LINE_X - 8;
 
           return (
             <View
@@ -38,7 +40,7 @@ export default function ScrollingCanvas({ notes, currentTimeMs, introDurationMs 
                 {
                   left: x,
                   width,
-                  opacity: isPast ? 0.4 : 1,
+                  opacity: isPast ? 0.45 : 1,
                 },
               ]}
             >
@@ -53,17 +55,17 @@ export default function ScrollingCanvas({ notes, currentTimeMs, introDurationMs 
 
 const styles = StyleSheet.create({
   canvasShell: {
-    height: 180,
+    height: 160,
     width: '100%',
+    backgroundColor: '#1E1E1E',
+    borderWidth: 1,
+    borderColor: '#2F2F2F',
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
   },
   gridBackground: {
     flex: 1,
-    backgroundColor: '#171717',
+    backgroundColor: '#1E1E1E',
     position: 'relative',
   },
   hitLine: {
@@ -74,10 +76,26 @@ const styles = StyleSheet.create({
     width: 2,
     backgroundColor: '#FFD700',
   },
+  guidelineRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 44,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  guidelineRowBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 44,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
   noteBlock: {
     position: 'absolute',
-    top: 58,
-    height: 46,
+    top: 56,
+    height: 48,
     borderRadius: 999,
     backgroundColor: '#FFD700',
     alignItems: 'center',
@@ -100,11 +118,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.48)',
   },
   countdownText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     backgroundColor: 'rgba(17, 17, 17, 0.9)',
     paddingHorizontal: 14,

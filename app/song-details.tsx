@@ -1,27 +1,31 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { AppState, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import ScrollingCanvas from './components/ScrollingCanvas';
-import { INTERACTIVE_MUSIC_DATABASE } from './data/musicData';
+import { BEHOLD_ASSET_REGISTRY, INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
 import {
-    initializeBeholdAudioConfiguration,
-    setVocalTrackMuteState,
-    startSyncedDualTracks,
-    terminateAudioSession,
-} from './services/audioEngine';
+  initializeBeholdAudioConfiguration,
+  setVocalTrackMuteState,
+  startSyncedDualTracks,
+  terminateAudioSession,
+} from '../src/services/audioEngine';
+import ScrollingCanvas from './components/ScrollingCanvas';
 
 export default function SongDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const routeId = Array.isArray(params.id) ? params.id[0] : params.id;
   const rawNumber = Array.isArray(params.number) ? params.number[0] : params.number;
   const numericNumber = Number(rawNumber ?? 0);
-  const activeSong = INTERACTIVE_MUSIC_DATABASE.find((song) => song.number === numericNumber) ?? INTERACTIVE_MUSIC_DATABASE[0];
+  const activeSong =
+    INTERACTIVE_MUSIC_DATABASE.find(
+      (song) => (routeId && song.id === routeId) || (Number.isFinite(numericNumber) && song.number === numericNumber),
+    ) ?? INTERACTIVE_MUSIC_DATABASE[0];
 
   const [playbackTime, setPlaybackTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [enableVocals, setEnableVocals] = useState(false);
-  const [detectedNoteText, setDetectedNoteText] = useState('Listening...');
+  const [isVocalMixed, setIsVocalMixed] = useState(false);
+  const [micNoteLabel, setMicNoteLabel] = useState('Awaiting Input...');
 
   useEffect(() => {
     void initializeBeholdAudioConfiguration();
@@ -31,7 +35,7 @@ export default function SongDetailsScreen() {
         void terminateAudioSession();
         setIsPlaying(false);
         setPlaybackTime(0);
-        setDetectedNoteText('Listening...');
+        setMicNoteLabel('Awaiting Input...');
       }
     });
 
@@ -44,8 +48,8 @@ export default function SongDetailsScreen() {
   useEffect(() => {
     setPlaybackTime(0);
     setIsPlaying(false);
-    setEnableVocals(false);
-    setDetectedNoteText('Listening...');
+    setIsVocalMixed(false);
+    setMicNoteLabel('Awaiting Input...');
   }, [numericNumber]);
 
   const handleBackPress = async () => {
@@ -54,21 +58,29 @@ export default function SongDetailsScreen() {
   };
 
   const handleTogglePlayback = async () => {
-    if (isPlaying) {
-      await terminateAudioSession();
-      setIsPlaying(false);
-      setPlaybackTime(0);
-      setDetectedNoteText('Listening...');
-      return;
-    }
-
     if (!activeSong) {
       return;
     }
 
+    if (isPlaying) {
+      await terminateAudioSession();
+      setIsPlaying(false);
+      setPlaybackTime(0);
+      setMicNoteLabel('Awaiting Input...');
+      return;
+    }
+
     try {
-      setDetectedNoteText('Listening...');
-      await startSyncedDualTracks(activeSong.accompAudio, activeSong.vocalAudio, enableVocals, (millis: number) => {
+      const accompanimentAsset = activeSong.accompAudioKey ? BEHOLD_ASSET_REGISTRY[activeSong.accompAudioKey] : null;
+      const vocalAsset = activeSong.vocalAudioKey ? BEHOLD_ASSET_REGISTRY[activeSong.vocalAudioKey] : accompanimentAsset;
+
+      if (!accompanimentAsset) {
+        setMicNoteLabel('No audio asset available');
+        return;
+      }
+
+      setMicNoteLabel('Awaiting Input...');
+      await startSyncedDualTracks(accompanimentAsset, vocalAsset ?? accompanimentAsset, isVocalMixed, (millis: number) => {
         setPlaybackTime(millis);
       });
       setIsPlaying(true);
@@ -76,12 +88,12 @@ export default function SongDetailsScreen() {
       console.warn('Failed to start synced tracks', error);
       setIsPlaying(false);
       setPlaybackTime(0);
-      setDetectedNoteText('Listening...');
+      setMicNoteLabel('Awaiting Input...');
     }
   };
 
   const handleVocalToggle = async (nextValue: boolean) => {
-    setEnableVocals(nextValue);
+    setIsVocalMixed(nextValue);
 
     if (!isPlaying) {
       return;
@@ -110,53 +122,66 @@ export default function SongDetailsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => void handleBackPress()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.titleText}>{activeSong?.title ?? 'Practice Mode'}</Text>
+        <View style={styles.headerMeta}>
+          <Text style={styles.headerNumber}>#{activeSong?.number ?? 0}</Text>
+          <Text style={styles.titleText}>{activeSong?.title ?? 'Practice Mode'}</Text>
+        </View>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heroPanel}>
           <Text style={styles.heroTitle}>Interactive Music Trainer</Text>
           <Text style={styles.heroSubtitle}>Follow the paced note lane, then sing or play along with the synchronized mix.</Text>
         </View>
 
         <View style={styles.controlPanel}>
-          <Text style={styles.panelLabel}>Mix</Text>
+          <Text style={styles.panelLabel}>Audio Mix</Text>
           <View style={styles.toggleRow}>
             <TouchableOpacity
-              style={[styles.toggleButton, !enableVocals && styles.toggleButtonActive]}
+              style={[styles.toggleButton, !isVocalMixed && styles.toggleButtonActive]}
               onPress={() => void handleVocalToggle(false)}
             >
-              <Text style={[styles.toggleText, !enableVocals && styles.toggleTextActive]}>Accompaniment Only</Text>
+              <Text style={[styles.toggleText, !isVocalMixed && styles.toggleTextActive]}>Accompaniment Only</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleButton, enableVocals && styles.toggleButtonActive]}
+              style={[styles.toggleButton, isVocalMixed && styles.toggleButtonActive]}
               onPress={() => void handleVocalToggle(true)}
             >
-              <Text style={[styles.toggleText, enableVocals && styles.toggleTextActive]}>Include Vocal Choir</Text>
+              <Text style={[styles.toggleText, isVocalMixed && styles.toggleTextActive]}>Include Vocal/Choir Track</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.canvasPanel}>
-          <ScrollingCanvas
-            notes={activeSong?.notes ?? []}
-            currentTimeMs={playbackTime}
-            introDurationMs={activeSong?.introDurationMs ?? 0}
-          />
+        <View style={styles.measureLaneCard}>
+          <View style={styles.measureLaneHeader}>
+            <Text style={styles.measureLaneTitle}>Scrolling Measure Lane</Text>
+            <Text style={styles.measureLaneMeta}>
+              {activeSong?.notes.length ? `${activeSong.notes.length} note cues` : 'Structured notes ready'}
+            </Text>
+          </View>
+          {activeSong?.notes.length ? (
+            <View style={styles.measureLaneSurface}>
+              <ScrollingCanvas notes={activeSong.notes} currentTimeMs={playbackTime} introDurationMs={activeSong.introDurationMs} />
+            </View>
+          ) : (
+            <View style={styles.placeholderLane}>
+              <Text style={styles.placeholderText}>Structured note lane will appear here when available.</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.bottomPanel}>
           <TouchableOpacity style={styles.playButton} onPress={() => void handleTogglePlayback()}>
-            <Text style={styles.playButtonText}>{isPlaying ? '■ Stop Practice' : '▶ Start Practice'}</Text>
+            <Text style={styles.playButtonText}>{isPlaying ? '■ Stop Practice' : '▶ Start Practice Mode'}</Text>
           </TouchableOpacity>
           <Text style={styles.timeText}>Playback: {formatPlaybackTime(playbackTime)}</Text>
           <View style={styles.detectionCard}>
             <Text style={styles.detectionLabel}>Microphone Note Detector</Text>
-            <Text style={styles.detectionValue}>{detectedNoteText}</Text>
-            {/* Placeholder for future native pitch detection integration. */}
+            <Text style={styles.detectionValue}>{micNoteLabel}</Text>
+            {/* Future microphone FFT arrays and pitch bins will connect here. */}
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -182,17 +207,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  titleText: {
+  headerMeta: {
     flex: 1,
+    alignItems: 'flex-end',
+  },
+  headerNumber: {
+    color: '#FFD700',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  titleText: {
     color: '#F5F5F5',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'right',
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16,
     gap: 12,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
   },
   heroPanel: {
     padding: 14,
@@ -252,10 +291,46 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: '#111111',
   },
-  canvasPanel: {
+  measureLaneCard: {
     borderRadius: 16,
+    padding: 12,
+    backgroundColor: '#171717',
+    borderWidth: 1,
+    borderColor: '#2D2D2D',
+  },
+  measureLaneHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  measureLaneTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  measureLaneMeta: {
+    color: '#9D9D9D',
+    fontSize: 12,
+  },
+  measureLaneSurface: {
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#121212',
+  },
+  placeholderLane: {
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111111',
+    borderRadius: 14,
+  },
+  placeholderText: {
+    color: '#E0E0E0',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   bottomPanel: {
     padding: 14,

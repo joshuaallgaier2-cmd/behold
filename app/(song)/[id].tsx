@@ -1,8 +1,9 @@
-import { BEHOLD_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from '@/app/data/musicData';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { BEHOLD_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from '../../src/data/musicData';
 
 export default function SongDetailsScreen() {
   const params = useLocalSearchParams();

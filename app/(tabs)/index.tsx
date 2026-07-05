@@ -1,22 +1,19 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    AppState,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  AppState,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 
-import { LDS_MUSIC_DATABASE, Song } from '../data/musicData';
-import {
-    initializeBeholdAudioConfiguration,
-    safelyTeardownActiveAudioPlayback,
-} from '../services/audioEngine';
+import { InteractiveSong, INTERACTIVE_MUSIC_DATABASE } from '../../src/data/musicData';
+import { initializeBeholdAudioConfiguration, safelyTeardownActiveAudioPlayback } from '../../src/services/audioEngine';
 
 type Category = 'hymn' | 'children' | 'youth';
 
@@ -29,7 +26,6 @@ export default function HomeScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<Category>('hymn');
-  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     void initializeBeholdAudioConfiguration();
@@ -49,7 +45,7 @@ export default function HomeScreen() {
   const filteredSongs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return LDS_MUSIC_DATABASE.filter((song) => {
+    return INTERACTIVE_MUSIC_DATABASE.filter((song) => {
       if (song.category !== activeTab) {
         return false;
       }
@@ -66,18 +62,15 @@ export default function HomeScreen() {
     });
   }, [activeTab, searchQuery]);
 
-  const renderItem = ({ item }: { item: Song }) => (
+  const renderItem = ({ item }: { item: InteractiveSong }) => (
     <TouchableOpacity
+      key={item.id}
       style={[styles.row, { width: itemWidth }]}
       activeOpacity={0.86}
       onPress={() => {
-        if (item.pageKeys.length > 0) {
-          setNotice(null);
-          router.push({ pathname: '/song-details', params: { number: String(item.number) } });
-          return;
+        if (item.notes.length > 0) {
+          router.push({ pathname: '/song-details', params: { id: item.id, number: String(item.number) } });
         }
-
-        setNotice('Sheet music assets are pending upload for this selection.');
       }}
     >
       <View style={styles.rowContent}>
@@ -87,10 +80,10 @@ export default function HomeScreen() {
         <View style={styles.textBlock}>
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.meta}>{item.sourceBook}</Text>
-          {item.pageKeys.length === 0 ? (
-            <Text style={styles.pending}>Sheet music assets pending upload</Text>
+          {item.notes.length > 0 ? (
+            <Text style={styles.ready}>Interactive practice ready</Text>
           ) : (
-            <Text style={styles.ready}>Ready to view and play</Text>
+            <Text style={styles.pending}>Sheet music assets pending upload</Text>
           )}
         </View>
       </View>
@@ -113,24 +106,18 @@ export default function HomeScreen() {
 
       <TextInput
         placeholder="Search by title, number, or book"
-        placeholderTextColor="#666"
+        placeholderTextColor="#555"
         value={searchQuery}
         onChangeText={setSearchQuery}
         style={styles.searchInput}
       />
-
-      {notice ? (
-        <View style={styles.noticeCard}>
-          <Text style={styles.noticeText}>{notice}</Text>
-        </View>
-      ) : null}
 
       <FlatList
         data={filteredSongs}
         renderItem={renderItem}
         keyExtractor={(song) => song.id}
         numColumns={numColumns}
-        key={isTabletOrChromebook ? 'grid-3' : 'list-1'}
+        key={isTabletOrChromebook ? 'g-3' : 'l-1'}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={isTabletOrChromebook ? styles.columnWrapper : undefined}
       />
@@ -139,10 +126,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
   headerTray: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -173,23 +156,10 @@ const styles = StyleSheet.create({
   searchInput: {
     backgroundColor: '#1E1E1E',
     color: '#FFF',
-    padding: 14,
+    padding: 12,
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 12,
-  },
-  noticeCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: '#FFD700',
-  },
-  noticeText: {
-    color: '#FFD700',
-    fontSize: 13,
   },
   listContent: {
     paddingHorizontal: 12,
