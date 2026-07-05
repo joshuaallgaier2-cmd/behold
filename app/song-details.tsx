@@ -4,10 +4,10 @@ import { AppState, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity,
 
 import { BEHOLD_ASSET_REGISTRY, INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
 import {
-  initializeBeholdAudioConfiguration,
-  setVocalTrackMuteState,
-  startSyncedDualTracks,
-  terminateAudioSession,
+    initializeBeholdAudioConfiguration,
+    setVocalTrackMuteState,
+    startSyncedDualTracks,
+    terminateAudioSession,
 } from '../src/services/audioEngine';
 import ScrollingCanvas from './components/ScrollingCanvas';
 

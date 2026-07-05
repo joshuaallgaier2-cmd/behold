@@ -1,18 +1,18 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  AppState,
-  FlatList,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    AppState,
+    FlatList,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 
-import { InteractiveSong, INTERACTIVE_MUSIC_DATABASE } from '../../src/data/musicData';
+import { INTERACTIVE_MUSIC_DATABASE, InteractiveSong } from '../../src/data/musicData';
 import { initializeBeholdAudioConfiguration, safelyTeardownActiveAudioPlayback } from '../../src/services/audioEngine';
 
 type Category = 'hymn' | 'children' | 'youth';
