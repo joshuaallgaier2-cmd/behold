@@ -2,27 +2,28 @@ import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 let accompanimentInstance: Audio.Sound | null = null;
 let vocalInstance: Audio.Sound | null = null;
-let micPollingIntervalId: number | null = null;
-let isMicrophoneActive: boolean = false; // Track microphone state
+let micPollingIntervalId: any = null;
+let isMicrophoneActive: boolean = false;
 
-export async function initializeBeholdAudioSystem() {
+export const initializeBeholdAudioConfiguration = async () => {
   try {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
+      playsInSilentModeIOS: true, // MUST be true on iOS if allowsRecordingIOS is true
       interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      playsInSilentModeIOS: false,
-      shouldDuckAndroid: true,
       interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      playThroughEarpieceAndroid: false,
+      shouldDuckAndroid: false,
+      staysActiveInBackground: false,
     });
-    console.log('Behold audio system initialized.');
+    console.log('Behold audio configuration initialized successfully.');
   } catch (error) {
-    console.error('Failed to initialize audio system:', error);
+    console.error('Failed to initialize Behold audio configuration:', error);
+    throw error;
   }
-}
+};
 
 export async function terminateAudioSession() {
-  deactivateMicrophoneSession(); // Ensure microphone is off
+  deactivateMicrophoneSession();
   try {
     if (accompanimentInstance) {
       await accompanimentInstance.stopAsync();
@@ -46,13 +47,13 @@ export async function startSyncedDualTracks(
   playVocal: boolean,
   onTimeUpdate: (ms: number) => void
 ) {
-  await terminateAudioSession(); // Clear out existing sound items first
+  await terminateAudioSession();
 
   try {
     const { sound: newAccompInstance } = await Audio.Sound.createAsync(
       accompSource,
-      { shouldPlay: true, isLooping: false, volume: 1.0 },
-      status => {
+      { shouldPlay: false, isLooping: false, volume: 1.0 },
+      (status) => {
         if (status.isLoaded && status.isPlaying) {
           onTimeUpdate(status.positionMillis);
         }
@@ -62,17 +63,31 @@ export async function startSyncedDualTracks(
 
     const { sound: newVocalInstance } = await Audio.Sound.createAsync(
       vocalSource,
-      { shouldPlay: true, isLooping: false, volume: playVocal ? 1.0 : 0.0 },
+      { shouldPlay: false, isLooping: false, volume: playVocal ? 1.0 : 0.0 }
     );
     vocalInstance = newVocalInstance;
 
-    await newAccompInstance.playAsync();
-    await newVocalInstance.playAsync();
+    // Synchronized Start
+    await accompanimentInstance.playAsync();
+    await vocalInstance.playAsync();
 
-    console.log('Dual tracks started.');
+    console.log('Dual tracks started in sync.');
   } catch (error) {
     console.error('Failed to start dual tracks:', error);
     await terminateAudioSession();
+  }
+}
+
+export async function setVocalTrackMuteState(isMuted: boolean) {
+  try {
+    if (vocalInstance) {
+      await vocalInstance.setVolumeAsync(isMuted ? 0.0 : 1.0);
+      console.log(`Vocal track ${isMuted ? 'muted' : 'unmuted'}.`);
+    } else {
+      console.warn('Vocal instance not found, cannot change mute state.');
+    }
+  } catch (error) {
+    console.error('Error setting vocal track mute state:', error);
   }
 }
 
@@ -92,11 +107,10 @@ export async function activateMicrophoneSession(onPitchDetected: (hertz: number)
     isMicrophoneActive = true;
     console.log('Microphone session activated.');
 
-    // Simulate microphone input polling
+    // Simulated Pitch Detection Polling
     micPollingIntervalId = setInterval(() => {
-      if (!isMicrophoneActive) return; // Check if deactivated during interval
-      // Simulate detecting a frequency. In a real scenario, this would come from a DSP library.
-      const mockFrequency = 200 + Math.random() * 400; // Simulate a frequency between 200Hz and 600Hz
+      if (!isMicrophoneActive) return;
+      const mockFrequency = 200 + Math.random() * 400; 
       onPitchDetected(mockFrequency);
     }, 120);
   } catch (error) {

@@ -21,9 +21,9 @@ export interface InteractiveSong {
 }
 
 export const BEHOLD_ASSET_REGISTRY: Record<string, any> = {
-  'hymn_173_p1': require('../../assets/hymn_173_p1.png'),
-  'hymn_173_accomp': require('../../assets/audio/hymn_173_accomp.mp3'),
-  'hymn_173_vocal': require('../../assets/audio/hymn_173_vocal.mp3'),
+  'hymn_173_p1': require('../../../assets/hymn_173_p1.png'),
+  'hymn_173_accomp': require('../../../assets/audio/hymn_173_accomp.mp3'),
+  'hymn_173_vocal': require('../../../assets/audio/hymn_173_vocal.mp3'),
 };
 
 export const INTERACTIVE_MUSIC_DATABASE: InteractiveSong[] = [

@@ -1,219 +1,218 @@
-import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-    AppState,
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useBeholdTheme } from '../../src/context/ThemeContext';
+import { initializeBeholdAudioConfiguration } from '../../src/services/audioEngine';
 
-import { INTERACTIVE_MUSIC_DATABASE, InteractiveSong } from '../../src/data/musicData';
-import { initializeBeholdAudioConfiguration, safelyTeardownActiveAudioPlayback } from '../../src/services/audioEngine';
+/**
+ * FILE 3: Responsive Application Dashboard Screen
+ * Path: 'app/(tabs)/index.tsx'
+ */
 
-type Category = 'hymn' | 'children' | 'youth';
+const StatCard = ({ label, value, color }: { label: string; value: string; color: string }) => {
+  const { colors } = useBeholdTheme();
+  return (
+    <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.statValue, { color: color }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.text }]}>{label}</Text>
+    </View>
+  );
+};
 
-export default function HomeScreen() {
-  const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isTabletOrChromebook = width > 600;
-  const numColumns = isTabletOrChromebook ? 3 : 1;
-  const itemWidth = isTabletOrChromebook ? (width - 48) / 3 : width - 32;
+const LessonItem = ({ title, duration }: { title: string; duration: string }) => {
+  const { colors } = useBeholdTheme();
+  return (
+    <View style={[styles.lessonItem, { borderBottomColor: colors.border }]}>
+      <View>
+        <Text style={[styles.lessonTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.lessonDuration, { color: colors.text, opacity: 0.6 }]}>{duration}</Text>
+      </View>
+      <View style={[styles.playButton, { backgroundColor: colors.accent }]}>
+        <View style={styles.playIcon} />
+      </View>
+    </View>
+  );
+};
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<Category>('hymn');
+export default function DashboardScreen() {
+  const { colors } = useBeholdTheme();
 
   useEffect(() => {
-    void initializeBeholdAudioConfiguration();
-
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        void safelyTeardownActiveAudioPlayback();
+    const startupBeholdSystems = async () => {
+      try {
+        await initializeBeholdAudioConfiguration();
+      } catch (error) {
+        console.warn("Audio system initialization bypassed safely:", error);
       }
-    });
-
-    return () => {
-      subscription.remove();
-      void safelyTeardownActiveAudioPlayback();
     };
+    startupBeholdSystems();
   }, []);
 
-  const filteredSongs = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return INTERACTIVE_MUSIC_DATABASE.filter((song) => {
-      if (song.category !== activeTab) {
-        return false;
-      }
-
-      if (!query) {
-        return true;
-      }
-
-      return (
-        String(song.number).includes(query) ||
-        song.title.toLowerCase().includes(query) ||
-        song.sourceBook.toLowerCase().includes(query)
-      );
-    });
-  }, [activeTab, searchQuery]);
-
-  const renderItem = ({ item }: { item: InteractiveSong }) => (
-    <TouchableOpacity
-      key={item.id}
-      style={[styles.row, { width: itemWidth }]}
-      activeOpacity={0.86}
-      onPress={() => {
-        if (item.notes.length > 0) {
-          router.push({ pathname: '/song-details', params: { id: item.id, number: String(item.number) } });
-        }
-      }}
-    >
-      <View style={styles.rowContent}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{item.number}</Text>
-        </View>
-        <View style={styles.textBlock}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.meta}>{item.sourceBook}</Text>
-          {item.notes.length > 0 ? (
-            <Text style={styles.ready}>Interactive practice ready</Text>
-          ) : (
-            <Text style={styles.pending}>Sheet music assets pending upload</Text>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#121212' }}>
-      <View style={styles.headerTray}>
-        {(['hymn', 'children', 'youth'] as const).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            onPress={() => setActiveTab(tab)}
-            style={[styles.navButton, activeTab === tab && styles.navButtonActive]}
-          >
-            <Text style={[styles.navText, activeTab === tab && styles.navTextActive]}>{tab.toUpperCase()}</Text>
-          </TouchableOpacity>
-        ))}
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.content}>
+        <Text style={[styles.greeting, { color: colors.text }]}>Welcome back,</Text>
+        <Text style={[styles.header, { color: colors.accent }]}>Your Dashboard</Text>
+
+        {/* Statistics Grid */}
+        <View style={styles.statsGrid}>
+          <StatCard label="Lessons" value="12" color={colors.accent} />
+          <StatCard label="Practice" value="4.5h" color="#4CAF50" />
+          <StatCard label="Accuracy" value="94%" color="#2196F3" />
+        </View>
+
+        {/* Recent Lessons */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Lessons</Text>
+          <View style={[styles.lessonContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <LessonItem title="Vocal Resonance I" duration="15 mins" />
+            <LessonItem title="Pitch Precision" duration="10 mins" />
+            <LessonItem title="Diaphragm Control" duration="20 mins" />
+          </View>
+        </View>
+
+        {/* Dynamic Progress */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Weekly Progress</Text>
+          <View style={[styles.progressBarContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.progressRow}>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>S</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>M</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>T</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>W</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>T</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>F</Text>
+              <Text style={[styles.progressLabel, { color: colors.text }]}>S</Text>
+            </View>
+            <View style={styles.chartArea}>
+              {[40, 70, 45, 90, 65, 80, 30].map((height, i) => (
+                <View 
+                  key={i} 
+                  style={[
+                    styles.chartBar, 
+                    { height: height, backgroundColor: i === 3 ? colors.accent : colors.text, opacity: i === 3 ? 1 : 0.2 }
+                  ]} 
+                />
+              ))}
+            </View>
+          </View>
+        </View>
       </View>
-
-      <TextInput
-        placeholder="Search by title, number, or book"
-        placeholderTextColor="#555"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        style={styles.searchInput}
-      />
-
-      <FlatList
-        data={filteredSongs}
-        renderItem={renderItem}
-        keyExtractor={(song) => song.id}
-        numColumns={numColumns}
-        key={isTabletOrChromebook ? 'g-3' : 'l-1'}
-        contentContainerStyle={styles.listContent}
-        columnWrapperStyle={isTabletOrChromebook ? styles.columnWrapper : undefined}
-      />
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerTray: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#171717',
-  },
-  navButton: {
+  container: {
     flex: 1,
-    marginHorizontal: 4,
-    paddingVertical: 10,
-    borderRadius: 999,
-    alignItems: 'center',
-    backgroundColor: '#1F1F1F',
   },
-  navButtonActive: {
-    backgroundColor: '#FFD700',
+  content: {
+    padding: 32,
   },
-  navText: {
-    color: '#BDBDBD',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+  greeting: {
+    fontSize: 18,
+    fontWeight: '400',
   },
-  navTextActive: {
-    color: '#111111',
+  header: {
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 32,
   },
-  searchInput: {
-    backgroundColor: '#1E1E1E',
-    color: '#FFF',
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 32,
   },
-  listContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 24,
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-  },
-  row: {
-    margin: 8,
-    backgroundColor: '#1B1B1B',
-    borderRadius: 12,
-    padding: 14,
+  statCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    alignItems: 'center',
   },
-  rowContent: {
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
+    opacity: 0.7,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  lessonContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  lessonItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
   },
-  badge: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FFD700',
+  lessonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  lessonDuration: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  badgeText: {
-    color: '#111111',
-    fontWeight: '800',
-    fontSize: 14,
+  playIcon: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 10,
+    borderRightWidth: 0,
+    borderBottomWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'black',
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderTopColor: 'transparent',
+    marginLeft: 3,
   },
-  textBlock: {
-    flex: 1,
+  progressBarContainer: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  title: {
-    color: '#FFF',
-    fontSize: 15,
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  progressLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 2,
+    width: 20,
+    textAlign: 'center',
   },
-  meta: {
-    color: '#AAA',
-    fontSize: 12,
-    marginBottom: 4,
+  chartArea: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 100,
   },
-  pending: {
-    color: '#FFCC00',
-    fontSize: 12,
-  },
-  ready: {
-    color: '#7BEA8A',
-    fontSize: 12,
+  chartBar: {
+    width: 12,
+    borderRadius: 6,
   },
 });
