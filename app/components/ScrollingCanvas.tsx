@@ -1,132 +1,179 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-
 import { NoteEvent } from '../../src/data/musicData';
 
-type ScrollingCanvasProps = {
+interface ScrollingCanvasProps {
   notes: NoteEvent[];
   currentTimeMs: number;
   introDurationMs: number;
-};
-
-const PIXELS_PER_MS = 0.07;
-const HIT_LINE_X = 86;
-
-export default function ScrollingCanvas({ notes, currentTimeMs, introDurationMs }: ScrollingCanvasProps) {
-  const isIntroPhase = currentTimeMs < introDurationMs;
-
-  return (
-    <View style={styles.canvasShell}>
-      <View style={styles.gridBackground}>
-        <View style={styles.hitLine} />
-        <View style={styles.guidelineRow} />
-        <View style={styles.guidelineRowBottom} />
-        {isIntroPhase ? (
-          <View style={styles.countdownOverlay}>
-            <Text style={styles.countdownText}>Intro Pre-roll Section Playing - Prepare Hands!</Text>
-          </View>
-        ) : null}
-        {notes.map((note, index) => {
-          const offset = note.startTimeMs - currentTimeMs;
-          const x = HIT_LINE_X + offset * PIXELS_PER_MS;
-          const width = Math.max(34, note.durationMs * 0.035);
-          const isPast = x + width < HIT_LINE_X - 8;
-
-          return (
-            <View
-              key={`${note.pitch}-${index}`}
-              style={[
-                styles.noteBlock,
-                {
-                  left: x,
-                  width,
-                  opacity: isPast ? 0.45 : 1,
-                },
-              ]}
-            >
-              <Text style={styles.noteText}>{note.pitch}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
+  bpm: number;
+  hitNoteIds: string[];
+  missedNoteIds: string[];
 }
 
+const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({
+  notes,
+  currentTimeMs,
+  introDurationMs,
+  bpm,
+  hitNoteIds,
+  missedNoteIds,
+}) => {
+  const pixelsPerBeat = 120;
+  const beatsPerMs = bpm / 60000;
+  const pixelsPerMs = beatsPerMs * pixelsPerBeat;
+
+  // Render a standard 5-line musical staff layout grid
+  const staffLines = Array.from({ length: 5 }).map((_, index) => (
+    <View
+      key={`staff-line-${index}`}
+      style={[
+        styles.staffLine,
+        { top: 40 + index * 20 }, // Spaced 20 pixels apart
+      ]}
+    />
+  ));
+
+  // Determine if intro is playing
+  const isIntroPlaying = currentTimeMs < introDurationMs;
+
+  return (
+    <View style={styles.container}>
+      {staffLines}
+
+      {/* Vertical timeline target indicator ("Hit Line") */}
+      <View style={styles.hitLine} />
+
+      {/* Notes */}
+      {!isIntroPlaying && notes.map((note) => {
+        const leftPositionX = 90 + (note.startTimeMs - currentTimeMs) * pixelsPerMs;
+        const noteWidth = note.durationMs * pixelsPerMs;
+
+        // Resolve vertical offsets based on note pitch.
+        // This is a simplified mapping. A more complex system would map all pitches to staff positions.
+        let topPosition;
+        let showLedgerLine = false;
+        switch (note.pitch) {
+          case 'C5': topPosition = 30; break;
+          case 'B4': topPosition = 40; break;
+          case 'A4': topPosition = 50; break;
+          case 'G4': topPosition = 60; break;
+          case 'F4': topPosition = 70; break;
+          case 'E4': topPosition = 80; break;
+          case 'D4': topPosition = 90; break;
+          case 'C4': topPosition = 100; showLedgerLine = true; break;
+          case 'B3': topPosition = 110; break;
+          default: topPosition = 70; // Default to F4 for unknown pitches
+        }
+
+        const isHit = hitNoteIds.includes(note.id);
+        const isMissed = missedNoteIds.includes(note.id);
+
+        let backgroundColor = '#4CD964'; // Emerald Green (Unplayed)
+        if (isHit) {
+          backgroundColor = '#007AFF'; // Pulsing Neon Blue (for hit, actual pulse would be animation)
+        } else if (isMissed) {
+          backgroundColor = '#FF3B30'; // Crimson Red (Missed)
+        }
+
+        const opacity = isMissed ? 0.3 : 1;
+
+        return (
+          <View
+            key={note.id}
+            style={[
+              styles.noteBlock,
+              {
+                left: leftPositionX,
+                width: noteWidth,
+                top: topPosition,
+                backgroundColor,
+                opacity,
+              },
+            ]}
+          >
+            {showLedgerLine && (
+              <View style={styles.ledgerLine} />
+            )}
+            <Text style={styles.noteText}>{note.pitch}</Text>
+          </View>
+        );
+      })}
+
+      {/* Intro Solo Playing Overlay */}
+      {isIntroPlaying && (
+        <View style={styles.introOverlay}>
+          <Text style={styles.introText}>Introduction Solo Playing - Match Tempo!</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  canvasShell: {
-    height: 160,
-    width: '100%',
-    backgroundColor: '#1E1E1E',
-    borderWidth: 1,
-    borderColor: '#2F2F2F',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  gridBackground: {
-    flex: 1,
-    backgroundColor: '#1E1E1E',
+  container: {
+    height: 180,
+    backgroundColor: '#1A1A1A',
     position: 'relative',
+    overflow: 'hidden',
+    width: '100%',
+  },
+  staffLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#666',
   },
   hitLine: {
     position: 'absolute',
+    left: 90,
     top: 0,
     bottom: 0,
-    left: HIT_LINE_X,
     width: 2,
-    backgroundColor: '#FFD700',
-  },
-  guidelineRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 44,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  guidelineRowBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 44,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#FFD700', // Gold color for the hit line
+    zIndex: 10,
   },
   noteBlock: {
     position: 'absolute',
-    top: 56,
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: '#FFD700',
-    alignItems: 'center',
+    height: 20, // Height of the note block, should align with staff lines
+    borderRadius: 4,
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
+    alignItems: 'center',
+    zIndex: 5,
   },
   noteText: {
-    color: '#111111',
-    fontWeight: '700',
+    color: '#FFF',
     fontSize: 12,
+    fontWeight: 'bold',
   },
-  countdownOverlay: {
+  ledgerLine: {
+    position: 'absolute',
+    height: 1,
+    width: '120%', // Slightly wider than the note block
+    backgroundColor: '#FFF',
+    top: '50%',
+    left: '-10%',
+    transform: [{ translateY: -0.5 }],
+    zIndex: 4,
+  },
+  introOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+    alignItems: 'center',
+    zIndex: 100,
   },
-  countdownText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    backgroundColor: 'rgba(17, 17, 17, 0.9)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
+  introText: {
+    color: '#FFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
+
+export default ScrollingCanvas;
