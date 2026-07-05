@@ -1,34 +1,88 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Dimensions, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HYMN_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from './data/musicData';
+import { BEHOLD_ASSET_REGISTRY, INTERACTIVE_MUSIC_DATABASE } from '../../src/data/musicData';
+import { initializeBeholdAudioSystem, setVocalTrackMuteState, startSyncedDualTracks, terminateAudioSession } from '../../src/services/audioEngine';
+import ScrollingCanvas from './components/ScrollingCanvas';
 
 export default function SongDetailsScreen() {
   const { number } = useLocalSearchParams();
   const router = useRouter();
 
-  const activeSong = LDS_MUSIC_DATABASE.find(s => s.number === Number(number));
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const activeSong = INTERACTIVE_MUSIC_DATABASE.find(s => s.number === Number(number));
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
+  const [isVocalMuted, setIsVocalMuted] = useState(false);
 
-  const activePageKey = activeSong?.pageKeys[currentPageIndex];
-  const resolvedImageAsset = activePageKey ? HYMN_ASSET_REGISTRY[activePageKey] : null;
+  // Initialize audio system on mount
+  useEffect(() => {
+    initializeBeholdAudioSystem();
+
+    return () => {
+      terminateAudioSession();
+    };
+  }, []);
+
+  // Start playback handler
+  const handleStartPractice = async () => {
+    if (!activeSong) return;
+
+    const accompSource = BEHOLD_ASSET_REGISTRY[activeSong.accompAudioKey];
+    const vocalSource = BEHOLD_ASSET_REGISTRY[activeSong.vocalAudioKey];
+
+    await startSyncedDualTracks(
+      accompSource,
+      vocalSource,
+      !isVocalMuted,
+      (time) => {
+        setCurrentTimeMs(time);
+      }
+    );
+
+    setIsPlaying(true);
+  };
+
+  const handleStopPractice = async () => {
+    await terminateAudioSession();
+    setIsPlaying(false);
+    setCurrentTimeMs(0);
+  };
+
+  // Handle vocal mute toggle
+  const handleVocalMuteToggle = () => {
+    if (activeSong) {
+      const accompSource = BEHOLD_ASSET_REGISTRY[activeSong.accompAudioKey];
+      const vocalSource = BEHOLD_ASSET_REGISTRY[activeSong.vocalAudioKey];
+
+      setVocalTrackMuteState(isVocalMuted);
+      setIsVocalMuted(!isVocalMuted);
+
+      // Restart tracks with new vocal state
+      startSyncedDualTracks(
+        accompSource,
+        vocalSource,
+        !isVocalMuted,
+        (time) => {
+          setCurrentTimeMs(time);
+        }
+      );
+    }
+  };
 
   const handleBack = () => {
     router.back();
   };
 
-  const handlePrevious = () => {
-    if (currentPageIndex > 0) {
-      setCurrentPageIndex(currentPageIndex - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (activeSong && currentPageIndex < activeSong.pageKeys.length - 1) {
-      setCurrentPageIndex(currentPageIndex + 1);
-    }
-  };
+  if (!activeSong) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.placeholder}>
+          <Text style={styles.placeholderText}>No song data available</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,43 +91,72 @@ export default function SongDetailsScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>{activeSong?.title}</Text>
+        <Text style={styles.title}>{activeSong.title}</Text>
       </View>
 
-      {/* Image Viewport */}
-      <View style={styles.imageContainer}>
-        {resolvedImageAsset ? (
-          <Image
-            source={resolvedImageAsset}
-            style={styles.image}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderText}>No image available</Text>
-          </View>
-        )}
+      {/* Scrolling Canvas - Piano Roll View */}
+      <View style={styles.canvasContainer}>
+        <ScrollingCanvas
+          notes={activeSong.notes}
+          currentTimeMs={currentTimeMs}
+          introDurationMs={activeSong.introDurationMs}
+        />
       </View>
 
-      {/* Navigation Controls */}
-      <View style={styles.footer}>
+      {/* Control Panel */}
+      <View style={styles.controlPanel}>
+        {/* Playback Toggle */}
         <TouchableOpacity
-          onPress={handlePrevious}
-          disabled={currentPageIndex === 0}
-          style={[styles.navButton, currentPageIndex === 0 && styles.navButtonDisabled]}
+          onPress={isPlaying ? handleStopPractice : handleStartPractice}
+          style={[
+            styles.playButton,
+            isPlaying && styles.playButtonActive,
+          ]}
         >
-          <Text style={[styles.navButtonText, currentPageIndex === 0 && styles.navButtonTextDisabled]}>
-            {'<'} Previous
+          <Text style={styles.playButtonText}>
+            {isPlaying ? 'Stop Practice Track' : 'Start Practice Track'}
           </Text>
         </TouchableOpacity>
 
+        {/* Mode Selector */}
+        <View style={styles.modeSelectorContainer}>
+          <Text style={styles.modeLabel}>Mode:</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setIsVocalMuted(true);
+              handleVocalMuteToggle();
+            }}
+            style={[
+              styles.modeButton,
+              isVocalMuted && styles.modeButtonActive,
+            ]}
+          >
+            <Text style={styles.modeButtonText}>Accompaniment Only</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setIsVocalMuted(false);
+              handleVocalMuteToggle();
+            }}
+            style={[
+              styles.modeButton,
+              !isVocalMuted && styles.modeButtonActive,
+            ]}
+          >
+            <Text style={styles.modeButtonText}>Mix Choir Tracker</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Vocal Mute Toggle */}
         <TouchableOpacity
-          onPress={handleNext}
-          disabled={activeSong ? currentPageIndex >= activeSong.pageKeys.length - 1 : true}
-          style={[styles.navButton, (activeSong ? currentPageIndex >= activeSong.pageKeys.length - 1 : true) && styles.navButtonDisabled]}
+          onPress={handleVocalMuteToggle}
+          style={[
+            styles.vocalMuteButton,
+            isVocalMuted && styles.vocalMuteButtonMuted,
+          ]}
         >
-          <Text style={[styles.navButtonText, (activeSong ? currentPageIndex >= activeSong.pageKeys.length - 1 : true) && styles.navButtonTextDisabled]}>
-            Next {'>'}
+          <Text style={styles.vocalMuteButtonText}>
+            {isVocalMuted ? '🔊 Unmute Vocals' : '🔇 Mute Vocals'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -105,56 +188,80 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
   },
-  imageContainer: {
+  canvasContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
   },
-  image: {
-    width: Dimensions.get('window').width - 16,
-    height: Dimensions.get('window').height * 0.5,
-    backgroundColor: '#1a1a1a',
-    borderWidth: 2,
-    borderColor: '#333333',
+  controlPanel: {
+    backgroundColor: '#1E1E1E',
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+    padding: 16,
+  },
+  playButton: {
+    backgroundColor: '#3B82F6',
     borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  playButtonActive: {
+    backgroundColor: '#2563EB',
+  },
+  playButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modeSelectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modeLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    marginRight: 8,
+  },
+  modeButton: {
+    flex: 1,
+    backgroundColor: '#333333',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  modeButtonActive: {
+    backgroundColor: '#4B5563',
+  },
+  modeButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  vocalMuteButton: {
+    backgroundColor: '#4B5563',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  vocalMuteButtonMuted: {
+    backgroundColor: '#EF4444',
+  },
+  vocalMuteButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   placeholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    borderWidth: 2,
-    borderColor: '#333333',
-    borderRadius: 8,
   },
   placeholderText: {
     color: '#666666',
     fontSize: 16,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-  },
-  navButton: {
-    flex: 1,
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    backgroundColor: '#333333',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  navButtonDisabled: {
-    opacity: 0.5,
-  },
-  navButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  navButtonTextDisabled: {
-    opacity: 0.5,
   },
 });
