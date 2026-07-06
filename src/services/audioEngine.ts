@@ -1,107 +1,95 @@
-import { useCallback, useState } from 'react';
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
-export interface AudioState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  volume: number;
-  playbackRate: number;
-  currentSongId: string | null;
+// Internal module parameters for track instances
+let accompanimentInstance: Audio.Sound | null = null;
+let vocalInstance: Audio.Sound | null = null;
+
+/**
+ * Initialize the Behold audio system with isolation settings.
+ * Configures interruption modes and silent mode behavior per platform.
+ */
+export async function initializeBeholdAudioSystem(): Promise<void> {
+  await Audio.setAudioModeAsync({
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+    playsInSilentModeIOS: false,
+  });
 }
 
-export interface PlaybackOptions {
-  loop?: boolean;
-  fadeDuration?: number;
+/**
+ * Safely clear and unload both audio track players.
+ * Called when app loses focus or user exits to prevent memory leaks.
+ */
+export async function terminateAudioSession(): Promise<void> {
+  if (accompanimentInstance) {
+    await accompanimentInstance.unloadAsync();
+    accompanimentInstance = null;
+  }
+  if (vocalInstance) {
+    await vocalInstance.unloadAsync();
+    vocalInstance = null;
+  }
 }
 
-interface AudioEngineContext {
-  ctx: AudioContext;
-  gainNode: GainNode;
-  oscillator: OscillatorNode | null;
-}
+/**
+ * Launch both audio tracks concurrently with time update callbacks.
+ * @param accompSource - Accompaniment audio asset
+ * @param vocalSource - Vocal audio asset
+ * @param playVocal - Whether to enable vocal track playback
+ * @param onTimeUpdate - Callback receiving current playback time in milliseconds
+ */
+export async function startSyncedDualTracks(
+  accompSource: any,
+  vocalSource: any,
+  playVocal: boolean,
+  onTimeUpdate: (ms: number) => void
+): Promise<void> {
+  // Initialize accompaniment track
+  if (accompanimentInstance) {
+    await accompanimentInstance.unloadAsync();
+  }
+  const { sound: accompSound } = await Audio.Sound.createAsync(accompSource);
+  accompanimentInstance = accompSound;
+  await accompanimentInstance.playAsync();
 
-class AudioEngine {
-  private ctx: AudioContext | null = null;
-  private gainNode: GainNode | null = null;
-  private oscillator: OscillatorNode | null = null;
-
-  constructor() {}
-
-  private init() {
-    if (this.ctx) return;
-    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    this.gainNode = this.ctx.createGain();
-    this.gainNode.connect(this.ctx.destination);
+  // Initialize vocal track only if enabled
+  if (vocalInstance) {
+    await vocalInstance.unloadAsync();
+  }
+  if (playVocal) {
+    const { sound: vocalSound } = await Audio.Sound.createAsync(vocalSource);
+    vocalInstance = vocalSound;
+    await vocalInstance.playAsync();
   }
 
-  public async playTone(frequency: number, duration: number, volume: number = 0.1) {
-    this.init();
-    if (!this.ctx || !this.gainNode) return;
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
-    
-    gain.gain.setValueAtTime(0, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-
-    osc.connect(gain);
-    gain.connect(this.gainNode);
-
-    osc.start();
-    osc.stop(this.ctx.currentTime + duration);
-  }
-
-  public stopAll() {
-    if (this.oscillator) {
-      this.oscillator.stop();
-      this.oscillator.disconnect();
-      this.oscillator = null;
+  // Set up time update listener for playback position
+  accompanimentInstance.setOnPlaybackStatusUpdate((status: any) => {
+    if (status.isLoaded && status.didJustFinish) {
+      terminateAudioSession();
+    } else if (status.isLoaded) {
+      onTimeUpdate(status.positionMillis);
     }
-  }
-
-  public setVolume(volume: number) {
-    if (this.gainNode) {
-      this.gainNode.gain.setTargetAtTime(volume, this.ctx ? this.ctx.currentTime : 0, 0.01);
-    }
-  }
-}
-
-export const audioEngine = new AudioEngine();
-
-export function useAudioEngine() {
-  const [state, setState] = useState<AudioState>({
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    volume: 0.8,
-    playbackRate: 1,
-    currentSongId: null,
   });
 
-  const playSong = useCallback(async (songId: string, options: PlaybackOptions = {}) => {
-    setState(prev => ({ ...prev, isPlaying: true, currentSongId: songId }));
-    // Actual audio implementation would go here
-    console.log(`Playing song ${songId} with options:`, options);
-  }, []);
+  if (vocalInstance) {
+    vocalInstance.setOnPlaybackStatusUpdate((status: any) => {
+      if (status.isLoaded && status.didJustFinish) {
+        terminateAudioSession();
+      } else if (status.isLoaded) {
+        onTimeUpdate(status.positionMillis);
+      }
+    });
+  }
+}
 
-  const stopSong = useCallback(() => {
-    setState(prev => ({ ...prev, isPlaying: false, currentSongId: null }));
-    audioEngine.stopAll();
-  }, []);
-
-  const updateVolume = useCallback((volume: number) => {
-    setState(prev => ({ ...prev, volume }));
-    audioEngine.setVolume(volume);
-  }, []);
-
-  return {
-    state,
-    playSong,
-    stopSong,
-    updateVolume,
-  };
+/**
+ * Toggle vocal track volume between muted (0.0) and full (1.0).
+ * @param isMuted - Set true to mute vocals, false to unmute
+ */
+export async function setVocalTrackMuteState(isMuted: boolean): Promise<void> {
+  if (vocalInstance) {
+    const newVolume = isMuted ? 0.0 : 1.0;
+    await vocalInstance.setVolumeAsync(newVolume);
+  }
 }

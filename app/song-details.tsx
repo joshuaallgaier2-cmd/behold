@@ -12,6 +12,10 @@ export default function SongDetailsScreen() {
 
   const song = INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id);
 
+  const handleTimeUpdate = (time: number) => {
+    console.log('Time updated:', time);
+  };
+
   if (!song) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>

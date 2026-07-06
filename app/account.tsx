@@ -1,17 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useBeholdTheme } from '../src/context/ThemeContext';
 
 export default function AccountScreen() {
-  const { colors } = useBeholdTheme();
-
-  const accountSettings = [
-    { name: 'Profile', icon: 'person-outline', detail: 'Manage your personal info' },
-    { name: 'Notifications', icon: 'notifications-outline', detail: 'Configure alerts and updates' },
-    { name: 'Preferences', icon: 'settings-outline', detail: 'Customize your experience' },
-    { name: 'Privacy', icon: 'lock-closed-outline', detail: 'Manage your data and security' },
-  ];
+  const { colors, toggleTheme, isDark } = useBeholdTheme();
+  
+  const [audioBuffering, setAudioBuffering] = useState(256);
+  const [pitchDetection, setPitchDetection] = useState(true);
+  const [cacheEnabled, setCacheEnabled] = useState(true);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
@@ -19,28 +16,35 @@ export default function AccountScreen() {
         <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
           <Ionicons name="person" size={40} color={colors.background} />
         </View>
-        <Text style={[styles.userName, { color: colors.text }]}>User Name</Text>
-        <Text style={[styles.userEmail, { color: colors.text, opacity: 0.5 }]}>user@example.com</Text>
+        <Text style={[styles.userName, { color: colors.text }]}>Joshua Allgaier</Text>
+        <Text style={[styles.userEmail, { color: colors.text, opacity: 0.5 }]}>Pro Member</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Settings</Text>
-        <View style={styles.settingsList}>
-          {accountSettings.map((setting) => (
-            <TouchableOpacity 
-              key={setting.name} 
-              style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <View style={styles.settingLeft}>
-                <Ionicons name={setting.icon as any} size={22} color={colors.accent} />
-                <View style={styles.settingTextContainer}>
-                  <Text style={[styles.settingName, { color: colors.text }]}>{setting.name}</Text>
-                  <Text style={[styles.settingDetail, { color: colors.text, opacity: 0.5 }]}>{setting.detail}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.text} style={{ opacity: 0.3 }} />
-            </TouchableOpacity>
-          ))}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Audio Engine</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.controlRow}>
+            <Text style={[styles.label, { color: colors.text }]}>Buffer Size (samples)</Text>
+            <Text style={[styles.value, { color: colors.accent }]}>{audioBuffering}</Text>
+          </View>
+          <View style={styles.controlRow}>
+            <Text style={[styles.label, { color: colors.text }]}>Pitch Detection</Text>
+            <Switch value={pitchDetection} onValueChange={setPitchDetection} trackColor={{ true: colors.accent }} />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferences</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.controlRow}>
+            <Text style={[styles.label, { color: colors.text }]}>Dark Mode</Text>
+            <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ true: colors.accent }} />
+          </View>
+          <View style={styles.controlRow}>
+            <Text style={[styles.label, { color: colors.text }]}>Local Cache</Text>
+            <Switch value={cacheEnabled} onValueChange={setCacheEnabled} trackColor={{ true: colors.accent }} />
+          </View>
         </View>
       </View>
 
@@ -57,23 +61,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 24,
-    paddingTop: 40,
+    padding: 32,
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
   profileHeader: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 48,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '800',
   },
   userEmail: {
@@ -86,32 +92,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
+    opacity: 0.7,
   },
-  settingsList: {
-    gap: 12,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
+  card: {
+    padding: 20,
     borderRadius: 20,
     borderWidth: 1,
+    gap: 20,
   },
-  settingLeft: {
+  controlRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 16,
   },
-  settingTextContainer: {
-    gap: 4,
-  },
-  settingName: {
+  label: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  settingDetail: {
-    fontSize: 13,
+  value: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   logoutButton: {
     flexDirection: 'row',

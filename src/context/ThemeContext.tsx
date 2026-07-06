@@ -9,6 +9,7 @@ export interface ThemeColors {
   text: string;
   accent: string;
   border: string;
+  error: string;
   isDark: boolean;
 }
 
@@ -30,6 +31,7 @@ const darkTheme: ThemeColors = {
   text: '#FFFFFF',
   accent: '#FFD700',
   border: '#2C2C2C',
+  error: '#EF5350',
   isDark: true,
 };
 
@@ -39,6 +41,7 @@ const lightTheme: ThemeColors = {
   text: '#1A1A1A',
   accent: '#D4AF37',
   border: '#E5E5E5',
+  error: '#D32F2F',
   isDark: false,
 };
 
