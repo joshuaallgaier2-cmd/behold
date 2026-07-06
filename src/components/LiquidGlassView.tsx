@@ -1,56 +1,48 @@
 import { BlurView } from 'expo-blur';
 import React from 'react';
-import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, View, ViewStyle } from 'react-native';
 
-/**
- * Interface for LiquidGlassView properties.
- */
 interface LiquidGlassViewProps {
   children: React.ReactNode;
-  intensity?: number;
-  style?: ViewStyle | ViewStyle[];
+  style?: ViewStyle;
+  blurIntensity?: number;
+  tint?: 'light' | 'dark' | 'default';
+  borderColor?: string;
+  borderWidth?: number;
 }
 
-/**
- * A premium glassmorphic container designed specifically for iOS.
- * On Android/Web, it falls back to a solid background surface to ensure compilation safety.
- */
 export const LiquidGlassView: React.FC<LiquidGlassViewProps> = ({ 
   children, 
-  intensity = 60, 
-  style 
+  style, 
+  blurIntensity = 20, 
+  tint = 'default', 
+  borderColor, 
+  borderWidth = 1 
 }) => {
-  // Architectural Rule: Platform-specific implementation for "Liquid Glass" effect.
-  if (Platform.OS === 'ios') {
-    return (
+  return (
+    <View style={[styles.container, style]}>
       <BlurView 
-        intensity={intensity} 
-        tint="dark" 
-        style={[styles.glassWrapper, style]}
+        intensity={blurIntensity} 
+        tint={tint} 
+        style={[
+          styles.blur, 
+          { borderColor, borderWidth }
+        ]} 
       >
         {children}
       </BlurView>
-    );
-  }
-
-  // Fallback for Android and Web environments.
-  return (
-    <View style={[styles.androidFallback, { backgroundColor: '#1E1E1E' }, style]}>
-      {children}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  glassWrapper: {
+  container: {
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    // Note: BlurView handles the actual translucency on iOS.
+    borderRadius: 20,
   },
-  androidFallback: {
-    // Solid fallback for non-iOS platforms.
+  blur: {
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#2C2C2C',
   },
 });

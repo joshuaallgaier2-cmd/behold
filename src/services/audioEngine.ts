@@ -1,129 +1,107 @@
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { useCallback, useState } from 'react';
 
-let accompanimentInstance: Audio.Sound | null = null;
-let vocalInstance: Audio.Sound | null = null;
-let micPollingIntervalId: any = null;
-let isMicrophoneActive: boolean = false;
+export interface AudioState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  playbackRate: number;
+  currentSongId: string | null;
+}
 
-export const initializeBeholdAudioConfiguration = async () => {
-  try {
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true, // MUST be true on iOS if allowsRecordingIOS is true
-      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      shouldDuckAndroid: false,
-      staysActiveInBackground: false,
-    });
-    console.log('Behold audio configuration initialized successfully.');
-  } catch (error) {
-    console.error('Failed to initialize Behold audio configuration:', error);
-    throw error;
+export interface PlaybackOptions {
+  loop?: boolean;
+  fadeDuration?: number;
+}
+
+interface AudioEngineContext {
+  ctx: AudioContext;
+  gainNode: GainNode;
+  oscillator: OscillatorNode | null;
+}
+
+class AudioEngine {
+  private ctx: AudioContext | null = null;
+  private gainNode: GainNode | null = null;
+  private oscillator: OscillatorNode | null = null;
+
+  constructor() {}
+
+  private init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.connect(this.ctx.destination);
   }
-};
 
-export async function terminateAudioSession() {
-  deactivateMicrophoneSession();
-  try {
-    if (accompanimentInstance) {
-      await accompanimentInstance.stopAsync();
-      await accompanimentInstance.unloadAsync();
-      accompanimentInstance = null;
+  public async playTone(frequency: number, duration: number, volume: number = 0.1) {
+    this.init();
+    if (!this.ctx || !this.gainNode) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
+    
+    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(this.gainNode);
+
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration);
+  }
+
+  public stopAll() {
+    if (this.oscillator) {
+      this.oscillator.stop();
+      this.oscillator.disconnect();
+      this.oscillator = null;
     }
-    if (vocalInstance) {
-      await vocalInstance.stopAsync();
-      await vocalInstance.unloadAsync();
-      vocalInstance = null;
+  }
+
+  public setVolume(volume: number) {
+    if (this.gainNode) {
+      this.gainNode.gain.setTargetAtTime(volume, this.ctx ? this.ctx.currentTime : 0, 0.01);
     }
-    console.log('Audio session terminated.');
-  } catch (error) {
-    console.error('Failed to terminate audio session:', error);
   }
 }
 
-export async function startSyncedDualTracks(
-  accompSource: any,
-  vocalSource: any,
-  playVocal: boolean,
-  onTimeUpdate: (ms: number) => void
-) {
-  await terminateAudioSession();
+export const audioEngine = new AudioEngine();
 
-  try {
-    const { sound: newAccompInstance } = await Audio.Sound.createAsync(
-      accompSource,
-      { shouldPlay: false, isLooping: false, volume: 1.0 },
-      (status) => {
-        if (status.isLoaded && status.isPlaying) {
-          onTimeUpdate(status.positionMillis);
-        }
-      }
-    );
-    accompanimentInstance = newAccompInstance;
+export function useAudioEngine() {
+  const [state, setState] = useState<AudioState>({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    volume: 0.8,
+    playbackRate: 1,
+    currentSongId: null,
+  });
 
-    const { sound: newVocalInstance } = await Audio.Sound.createAsync(
-      vocalSource,
-      { shouldPlay: false, isLooping: false, volume: playVocal ? 1.0 : 0.0 }
-    );
-    vocalInstance = newVocalInstance;
+  const playSong = useCallback(async (songId: string, options: PlaybackOptions = {}) => {
+    setState(prev => ({ ...prev, isPlaying: true, currentSongId: songId }));
+    // Actual audio implementation would go here
+    console.log(`Playing song ${songId} with options:`, options);
+  }, []);
 
-    // Synchronized Start
-    await accompanimentInstance.playAsync();
-    await vocalInstance.playAsync();
+  const stopSong = useCallback(() => {
+    setState(prev => ({ ...prev, isPlaying: false, currentSongId: null }));
+    audioEngine.stopAll();
+  }, []);
 
-    console.log('Dual tracks started in sync.');
-  } catch (error) {
-    console.error('Failed to start dual tracks:', error);
-    await terminateAudioSession();
-  }
-}
+  const updateVolume = useCallback((volume: number) => {
+    setState(prev => ({ ...prev, volume }));
+    audioEngine.setVolume(volume);
+  }, []);
 
-export async function setVocalTrackMuteState(isMuted: boolean) {
-  try {
-    if (vocalInstance) {
-      await vocalInstance.setVolumeAsync(isMuted ? 0.0 : 1.0);
-      console.log(`Vocal track ${isMuted ? 'muted' : 'unmuted'}.`);
-    } else {
-      console.warn('Vocal instance not found, cannot change mute state.');
-    }
-  } catch (error) {
-    console.error('Error setting vocal track mute state:', error);
-  }
-}
-
-export async function activateMicrophoneSession(onPitchDetected: (hertz: number) => void) {
-  if (isMicrophoneActive) {
-    console.warn('Microphone session already active.');
-    return;
-  }
-
-  try {
-    const { granted } = await Audio.requestPermissionsAsync();
-    if (!granted) {
-      console.error('Microphone permission not granted.');
-      return;
-    }
-
-    isMicrophoneActive = true;
-    console.log('Microphone session activated.');
-
-    // Simulated Pitch Detection Polling
-    micPollingIntervalId = setInterval(() => {
-      if (!isMicrophoneActive) return;
-      const mockFrequency = 200 + Math.random() * 400; 
-      onPitchDetected(mockFrequency);
-    }, 120);
-  } catch (error) {
-    console.error('Failed to activate microphone session:', error);
-    isMicrophoneActive = false;
-  }
-}
-
-export function deactivateMicrophoneSession() {
-  if (micPollingIntervalId) {
-    clearInterval(micPollingIntervalId);
-    micPollingIntervalId = null;
-  }
-  isMicrophoneActive = false;
-  console.log('Microphone session deactivated.');
+  return {
+    state,
+    playSong,
+    stopSong,
+    updateVolume,
+  };
 }

@@ -3,22 +3,22 @@ import React, { useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BEHOLD_ASSET_REGISTRY, LDS_MUSIC_DATABASE } from '../../src/data/musicData';
+import { BEHOLD_ASSET_REGISTRY, INTERACTIVE_MUSIC_DATABASE, InteractiveSong } from '../../src/data/musicData';
 
 export default function SongDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const number = params.id as string;
 
-  // Look up the active song by matching the 'number' parameter
-  const activeSong = LDS_MUSIC_DATABASE.find(s => s.number === Number(number));
-  
-  // State for current page index
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-
-  // Safe reference for the current image target using the asset registry
-  const activePageKey = activeSong?.pageKeys[currentPageIndex];
-  const resolvedImageAsset = activePageKey ? BEHOLD_ASSET_REGISTRY[activePageKey] : null;
+   // Look up the active song by matching the 'number' parameter
+   const activeSong = INTERACTIVE_MUSIC_DATABASE.find((s: InteractiveSong) => s.number === Number(number));
+   
+   // State for current page index
+   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+   
+   // Safe reference for the current image target using the asset registry
+   const activePageKey = activeSong?.pageKeys?.[currentPageIndex];
+   const resolvedImageAsset = activePageKey ? BEHOLD_ASSET_REGISTRY[activePageKey] : null;
 
   const handlePreviousPage = () => {
     if (currentPageIndex > 0) {
@@ -27,7 +27,7 @@ export default function SongDetailsScreen() {
   };
 
   const handleNextPage = () => {
-    if (activeSong && currentPageIndex < activeSong.pageKeys.length - 1) {
+    if (activeSong && activeSong.pageKeys && currentPageIndex < activeSong.pageKeys.length - 1) {
       setCurrentPageIndex((prev) => prev + 1);
     }
   };
@@ -78,14 +78,14 @@ export default function SongDetailsScreen() {
           <TouchableOpacity
             style={[
               styles.navButton, 
-              (activeSong?.pageKeys.length ?? 1) - 1 === currentPageIndex && styles.navButtonDisabled
+              (activeSong?.pageKeys ? (activeSong.pageKeys.length - 1) : 0) === currentPageIndex && styles.navButtonDisabled
             ]}
             onPress={handleNextPage}
-            disabled={(activeSong?.pageKeys.length ?? 1) - 1 === currentPageIndex}
+            disabled={(activeSong?.pageKeys ? (activeSong.pageKeys.length - 1) : 0) === currentPageIndex}
           >
             <Text style={[
               styles.navButtonText, 
-              (activeSong?.pageKeys.length ?? 1) - 1 === currentPageIndex && styles.navButtonTextDisabled
+              (activeSong?.pageKeys ? (activeSong.pageKeys.length - 1) : 0) === currentPageIndex && styles.navButtonTextDisabled
             ]}>
               Next {'>'}
             </Text>

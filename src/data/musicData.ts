@@ -18,13 +18,21 @@ export interface InteractiveSong {
   accompAudioKey: string;
   vocalAudioKey: string;
   notes: NoteEvent[];
+  pageKeys?: string[];
 }
 
 export const BEHOLD_ASSET_REGISTRY: Record<string, any> = {
-  'hymn_173_p1': require('../../../assets/hymn_173_p1.png'),
-  'hymn_173_accomp': require('../../../assets/audio/hymn_173_accomp.mp3'),
-  'hymn_173_vocal': require('../../../assets/audio/hymn_173_vocal.mp3'),
+  'hymn_173_p1': require('../../assets/hymn_173_p1.png'),
+  'hymn_173_accomp': require('../../assets/audio/hymn_173_accomp.mp3'),
+  'hymn_173_vocal': require('../../assets/audio/hymn_173_vocal.mp3'),
 };
+
+// Correct the pageKeys to match the registry keys used in app/(song)/[id].tsx
+// In app/(song)/[id].tsx:
+// const activePageKey = activeSong?.pageKeys?.[currentPageIndex];
+// const resolvedImageAsset = activePageKey ? BEHOLD_ASSET_REGISTRY[activePageKey] : null;
+//
+// Currently hymn_173 has pageKeys: ['p1'], but registry has 'hymn_173_p1'
 
 export const INTERACTIVE_MUSIC_DATABASE: InteractiveSong[] = [
   {
@@ -55,6 +63,7 @@ export const INTERACTIVE_MUSIC_DATABASE: InteractiveSong[] = [
       { id: 'h173_14', pitch: 'D4', midiNumber: 62, startTimeMs: 10500, durationMs: 500 },
       { id: 'h173_15', pitch: 'C4', midiNumber: 60, startTimeMs: 11000, durationMs: 500 },
     ],
+    pageKeys: ['hymn_173_p1'],
   },
   {
     id: 'children_placeholder',
@@ -68,6 +77,7 @@ export const INTERACTIVE_MUSIC_DATABASE: InteractiveSong[] = [
     accompAudioKey: '',
     vocalAudioKey: '',
     notes: [],
+    pageKeys: [],
   },
   {
     id: 'youth_placeholder',
@@ -77,9 +87,10 @@ export const INTERACTIVE_MUSIC_DATABASE: InteractiveSong[] = [
     sourceBook: 'Youth Album',
     bpm: 90,
     introDurationMs: 3000,
-        totalDurationMs: 20000,
+    totalDurationMs: 20000,
     accompAudioKey: '',
     vocalAudioKey: '',
     notes: [],
+    pageKeys: [],
   },
 ];

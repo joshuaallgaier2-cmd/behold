@@ -1,247 +1,206 @@
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BEHOLD_ASSET_REGISTRY, INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
-import { activateMicrophoneSession, deactivateMicrophoneSession, initializeBeholdAudioSystem, startSyncedDualTracks, terminateAudioSession } from '../src/services/audioEngine';
-import { convertFrequencyToMidi, convertMidiToNoteName } from '../src/services/pitchEngine';
-import ScrollingCanvas from './components/ScrollingCanvas';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useBeholdTheme } from '../src/context/ThemeContext';
+import { INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
 
-const NOTE_HIT_TOLERANCE_MS = 180; // Milliseconds tolerance for hitting a note
+export default function SongDetailsScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { colors } = useBeholdTheme();
 
-const SongDetailsScreen: React.FC = () => {
-  const { id } = useLocalSearchParams();
-  const songId = id as string;
+  const song = INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id);
 
-  const currentSong = INTERACTIVE_MUSIC_DATABASE.find(song => song.id === songId);
-
-  // State hooks
-  const [playbackTime, setPlaybackTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hitNoteIds, setHitNoteIds] = useState<string[]>([]);
-  const [missedNoteIds, setMissedNoteIds] = useState<string[]>([]);
-  const [userScore, setUserScore] = useState(0);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [micStatusText, setMicStatusText] = useState("Microphone Inactive");
-  const [latencyCalibrationMs, setLatencyCalibrationMs] = useState(0); // Adjustable delay tracker for hardware input lag
-  const playbackIntervalRef = useRef<number | null>(null);
-
-  // AppState listener for focus changes and unmount
-  useEffect(() => {
-    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'inactive' || nextAppState === 'background') {
-        console.log('App is in background or inactive, terminating audio/mic sessions.');
-        await terminateAudioSession();
-        deactivateMicrophoneSession();
-        setIsPlaying(false);
-        setMicStatusText("Microphone Inactive");
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      console.log('SongDetailsScreen unmounting, terminating audio/mic sessions.');
-      terminateAudioSession();
-      deactivateMicrophoneSession();
-      if (playbackIntervalRef.current) {
-        clearInterval(playbackIntervalRef.current);
-      }
-      subscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    initializeBeholdAudioSystem();
-  }, []);
-
-  const handleTimeUpdate = (ms: number) => {
-    setPlaybackTime(ms);
-  };
-
-  const startPractice = async () => {
-    if (!currentSong) return;
-
-    setPlaybackTime(0);
-    setHitNoteIds([]);
-    setMissedNoteIds([]);
-    setUserScore(0);
-    setCurrentStreak(0);
-    setIsPlaying(true);
-    setMicStatusText("Microphone Active");
-
-    const accompAudioSource = BEHOLD_ASSET_REGISTRY[currentSong.accompAudioKey];
-    const vocalAudioSource = BEHOLD_ASSET_REGISTRY[currentSong.vocalAudioKey];
-
-    if (!accompAudioSource) {
-      console.error(`Accompaniment audio source for key ${currentSong.accompAudioKey} not found.`);
-      setIsPlaying(false);
-      setMicStatusText("Microphone Inactive");
-      return;
-    }
-
-    await startSyncedDualTracks(accompAudioSource, vocalAudioSource, false, handleTimeUpdate);
-
-    activateMicrophoneSession((hertz) => {
-      const midi = convertFrequencyToMidi(hertz);
-      const noteName = convertMidiToNoteName(midi);
-      // console.log(`Detected pitch: ${noteName} (${hertz}Hz, MIDI: ${midi})`);
-
-      const calibratedTimeMark = playbackTime - latencyCalibrationMs;
-
-      // Real-Time Note Verification Game Loop
-      currentSong.notes.forEach((note) => {
-        // Mark as missed if past the note's hit window and not already hit/missed
-        const hasPassedNote = calibratedTimeMark > (note.startTimeMs + NOTE_HIT_TOLERANCE_MS);
-        if (hasPassedNote && !hitNoteIds.includes(note.id) && !missedNoteIds.includes(note.id)) {
-          setMissedNoteIds(prev => [...prev, note.id]);
-          setCurrentStreak(0); // Reset streak on miss
-        }
-
-        // Check for hit
-        const isWithinHitWindow =
-          calibratedTimeMark >= (note.startTimeMs - NOTE_HIT_TOLERANCE_MS) &&
-          calibratedTimeMark <= (note.startTimeMs + NOTE_HIT_TOLERANCE_MS);
-
-        if (isWithinHitWindow && !hitNoteIds.includes(note.id)) {
-          if (note.midiNumber === midi) {
-            setHitNoteIds(prev => [...prev, note.id]);
-            setCurrentStreak(prev => prev + 1);
-            setUserScore(prev => prev + (100 * (currentStreak + 1))); // Score with multiplier
-            console.log(`HIT! Note: ${note.pitch}, Streak: ${currentStreak + 1}`);
-          } else if (midi !== -1) { // If a pitch is detected but it's wrong
-            setCurrentStreak(0); // Reset streak on incorrect key
-            console.log(`WRONG NOTE! Expected: ${note.pitch}, Detected: ${noteName}`);
-          }
-        }
-      });
-    });
-
-    playbackIntervalRef.current = setInterval(() => {
-      // This interval is primarily for UI updates if onTimeUpdate from expo-av isn't frequent enough
-      // The onTimeUpdate callback from startSyncedDualTracks will drive the main playbackTime
-    }, 50); // Update UI roughly every 50ms for smoother scrolling
-  };
-
-  const stopPractice = async () => {
-    setIsPlaying(false);
-    await terminateAudioSession();
-    deactivateMicrophoneSession();
-    setMicStatusText("Microphone Inactive");
-    if (playbackIntervalRef.current) {
-      clearInterval(playbackIntervalRef.current);
-      playbackIntervalRef.current = null;
-    }
-    setPlaybackTime(0); // Reset playback time on stop
-  };
-
-  if (!currentSong) {
+  if (!song) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Song not found!</Text>
+      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+        <Text style={[styles.errorText, { color: colors.text }]}>Song not found</Text>
+        <TouchableOpacity 
+          style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+          onPress={() => router.back()}
+        >
+          <Text style={[styles.backButtonText, { color: colors.text }]}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Top Performance Bar */}
-      <View style={styles.topBar}>
-        <Text style={styles.topBarText}>Score: {userScore}</Text>
-        <Text style={styles.topBarText}>Streak: {currentStreak}</Text>
-        <Text style={styles.topBarText}>Mic: {micStatusText}</Text>
-        <View style={styles.sliderContainer}>
-          <Text style={styles.sliderLabel}>Latency Calibration: {latencyCalibrationMs}ms</Text>
-          <View style={styles.calibrationButtons}>
-            <TouchableOpacity 
-              style={styles.calButton} 
-              onPress={() => setLatencyCalibrationMs(prev => prev - 10)}
-            >
-              <Text style={styles.calButtonText}>-10ms</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.calButton} 
-              onPress={() => setLatencyCalibrationMs(prev => prev + 10)}
-            >
-              <Text style={styles.calButtonText}>+10ms</Text>
-            </TouchableOpacity>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
+      <TouchableOpacity 
+        style={[styles.backButtonSmall, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={20} color={colors.text} />
+      </TouchableOpacity>
+
+      <View style={styles.header}>
+        <Text style={[styles.songNumber, { color: colors.accent }]}>#{song.number}</Text>
+        <Text style={[styles.songTitle, { color: colors.text }]}>{song.title}</Text>
+        <Text style={[styles.songSource, { color: colors.text, opacity: 0.5 }]}>{song.sourceBook}</Text>
+      </View>
+
+      <View style={[styles.playerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.playerControls}>
+          <TouchableOpacity style={styles.controlButton}>
+            <Ionicons name="play-back" size={32} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.playButton, { backgroundColor: colors.accent }]}>
+            <Ionicons name="play" size={40} color={colors.background} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.controlButton}>
+            <Ionicons name="play-forward" size={32} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+            <View style={[styles.progressFill, { backgroundColor: colors.accent }]} />
+          </View>
+          <View style={styles.timeContainer}>
+            <Text style={[styles.timeText, { color: colors.text, opacity: 0.5 }]}>1:23</Text>
+            <Text style={[styles.timeText, { color: colors.text, opacity: 0.5 }]}>3:45</Text>
           </View>
         </View>
       </View>
 
-      {/* Canvas Middle */}
-      <ScrollingCanvas
-        notes={currentSong.notes}
-        currentTimeMs={playbackTime}
-        introDurationMs={currentSong.introDurationMs}
-        bpm={currentSong.bpm}
-        hitNoteIds={hitNoteIds}
-        missedNoteIds={missedNoteIds}
-      />
-
-      {/* Lower Panel Controls */}
-      <View style={styles.lowerPanel}>
-        <Button
-          title={isPlaying ? "Stop Practice" : "Start Practice"}
-          onPress={isPlaying ? stopPractice : startPractice}
-          color={isPlaying ? "#FF3B30" : "#4CD964"}
-        />
+      <View style={styles.detailsSection}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Song Details</Text>
+        <View style={[styles.detailRow, { borderColor: colors.border }]}>
+          <Text style={[styles.detailLabel, { color: colors.text, opacity: 0.5 }]}>Category</Text>
+          <Text style={[styles.detailValue, { color: colors.text }]}>{song.category}</Text>
+        </View>
+        <View style={[styles.detailRow, { borderColor: colors.border }]}>
+          <Text style={[styles.detailLabel, { color: colors.text, opacity: 0.5 }]}>ID</Text>
+          <Text style={[styles.detailValue, { color: colors.text }]}>{song.id}</Text>
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212', // High-visibility dark mode
   },
-  topBar: {
+  contentContainer: {
+    padding: 24,
+    paddingTop: 40,
+  },
+  backButtonSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+    gap: 8,
+  },
+  songNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  songTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  songSource: {
+    fontSize: 18,
+  },
+  playerContainer: {
+    padding: 24,
+    borderRadius: 32,
+    borderWidth: 1,
+    marginBottom: 40,
+  },
+  playerControls: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-around',
+    marginBottom: 32,
+  },
+  controlButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: '#1E1E1E',
+    justifyContent: 'center',
   },
-  topBarText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  sliderContainer: {
-    flexDirection: 'column',
+  playButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  sliderLabel: {
-    color: '#FFF',
-    fontSize: 12,
-    marginBottom: 5,
+  progressBarContainer: {
+    gap: 12,
   },
-  calibrationButtons: {
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    width: '30%',
+    height: '100%',
+  },
+  timeContainer: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
   },
-  calButton: {
-    backgroundColor: '#333',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  calButtonText: {
-    color: '#007AFF',
+  timeText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
-  lowerPanel: {
-    padding: 20,
-    backgroundColor: '#1E1E1E',
+  detailsSection: {
+    gap: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  detailLabel: {
+    fontSize: 16,
+  },
+  detailValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
   },
   errorText: {
-    color: '#FF3B30',
-    fontSize: 20,
-    textAlign: 'center',
-    marginTop: 50,
+    fontSize: 18,
+    fontWeight: '600',
+    marginVertical: 16,
+  },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
-
-export default SongDetailsScreen;

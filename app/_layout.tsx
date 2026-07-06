@@ -1,84 +1,82 @@
-import { Slot, usePathname, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Slot, useRouter } from 'expo-router';
 import React from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LiquidGlassView } from '../src/components/LiquidGlassView';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ThemeProvider, useBeholdTheme } from '../src/context/ThemeContext';
 
-/**
- * FILE 2: Root Layout Split-Pane Sidebar with Liquid Glass & Theme Provider Interlocking
- * Path: 'app/_layout.tsx'
- */
+const { width } = Dimensions.get('window');
 
-const SidebarContent = () => {
+/**
+ * Sidebar Component
+ * This is nested within ThemeProvider to ensure access to theme colors.
+ */
+function Sidebar() {
   const { colors } = useBeholdTheme();
   const router = useRouter();
-  const pathname = usePathname();
 
   const navItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Explore', path: '/explore' },
-    { label: 'Songs', path: '/songs' },
-    { label: 'Account', path: '/account' },
+    { name: 'Home', icon: 'home-outline', path: '/' },
+    { name: 'Songs', icon: 'musical-notes-outline', path: '/songs' },
+    { name: 'Account', icon: 'person-outline', path: '/account' },
   ];
 
   return (
-    <View style={styles.sidebarContainer}>
-      <Text style={[styles.logoText, { color: colors.accent }]}>BEHOLD</Text>
-      <View style={styles.navGroup}>
-        {navItems.map((item) => {
-          const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
-          return (
-            <TouchableOpacity
-              key={item.label}
-              onPress={() => router.push(item.path as any)}
-              style={styles.navItem}
-            >
-              <Text
-                style={[
-                  styles.navLabel,
-                  { color: isActive ? colors.accent : colors.text },
-                  isActive && styles.activeNavLabel,
-                ]}
-              >
-                {item.label}
-              </Text>
-              {isActive && (
-                <View style={[styles.activeIndicator, { backgroundColor: colors.accent }]} />
-              )}
-            </TouchableOpacity>
-          );
-        })}
+    <View style={[styles.sidebar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={styles.logoContainer}>
+        <Ionicons name="compass" size={32} color={colors.accent} />
+        <Text style={[styles.logoText, { color: colors.text }]}>BEHOLD</Text>
+      </View>
+
+      <View style={styles.navContainer}>
+        {navItems.map((item) => (
+          <TouchableOpacity
+            key={item.name}
+            style={[
+              styles.navItem,
+              { borderColor: colors.border }
+            ]}
+            onPress={() => router.push(item.path as any)}
+          >
+            <Ionicons 
+              name={item.icon as any} 
+              size={22} 
+              color={colors.text} 
+              style={{ opacity: 0.8 }} 
+            />
+            <Text style={[styles.navText, { color: colors.text }]}>{item.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={[styles.versionText, { color: colors.text, opacity: 0.4 }]}>v1.0.0</Text>
       </View>
     </View>
   );
-};
+}
 
-const MainLayout = () => {
+/**
+ * MainLayout
+ * Handles the structural split between the Sidebar and the Content Area.
+ */
+function MainLayout() {
   const { colors } = useBeholdTheme();
 
   return (
-    <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
-      {/* Left Sidebar Section */}
-      <View style={styles.sidebarWrapper}>
-        {Platform.OS === 'ios' ? (
-          <LiquidGlassView intensity={80} style={styles.sidebarGlass}>
-            <SidebarContent />
-          </LiquidGlassView>
-        ) : (
-          <View style={[styles.sidebarSolid, { backgroundColor: colors.surface }]}>
-            <SidebarContent />
-          </View>
-        )}
-      </View>
-
-      {/* Right Display Screen Box */}
-      <View style={styles.contentCanvas}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <Sidebar />
+      <View style={styles.content}>
         <Slot />
       </View>
     </View>
   );
-};
+}
 
+/**
+ * Root Layout
+ * Wraps the entire application in the ThemeProvider to resolve context missing errors.
+ * This is the absolute root entry point.
+ */
 export default function RootLayout() {
   return (
     <ThemeProvider>
@@ -88,55 +86,58 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  rootContainer: {
+  root: {
     flex: 1,
     flexDirection: 'row',
   },
-  sidebarWrapper: {
-    width: 240,
+  sidebar: {
+    width: 260,
+    borderRightWidth: 1,
+    paddingTop: 60,
+    paddingHorizontal: 20,
     height: '100%',
   },
-  sidebarGlass: {
-    flex: 1,
-  },
-  sidebarSolid: {
-    flex: 1,
-    borderRightWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  sidebarContainer: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: 24,
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 40,
+    paddingLeft: 10,
   },
   logoText: {
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     letterSpacing: 2,
-    marginBottom: 40,
   },
-  navGroup: {
-    gap: 20,
+  navContainer: {
+    gap: 12,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
   },
-  navLabel: {
-    fontSize: 18,
-    fontWeight: '500',
+  navText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
-  activeNavLabel: {
-    fontWeight: '700',
-  },
-  activeIndicator: {
-    width: 4,
-    height: 18,
-    borderRadius: 2,
-  },
-  contentCanvas: {
+  content: {
     flex: 1,
+    height: '100%',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  versionText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

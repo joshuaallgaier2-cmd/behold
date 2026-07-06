@@ -1,91 +1,60 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useBeholdTheme } from '../src/context/ThemeContext';
 import { INTERACTIVE_MUSIC_DATABASE, InteractiveSong } from '../src/data/musicData';
 
-/**
- * Dynamic Category & Hymn Search Grid Dashboard.
- */
 export default function SongsScreen() {
-  const { colors } = useBeholdTheme();
   const router = useRouter();
+  const { colors } = useBeholdTheme();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter songs based on search query.
-  const filteredSongs = useMemo(() => {
-    return INTERACTIVE_MUSIC_DATABASE.filter(song => 
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.number.toString().includes(searchQuery)
-    );
-  }, [searchQuery]);
+  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter(song => 
+    song.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    song.number.toString().includes(searchQuery)
+  );
 
   const renderSongItem = ({ item }: { item: InteractiveSong }) => (
     <TouchableOpacity 
-      style={[styles.songCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={() => router.push({
-        pathname: '/song-details',
-        params: { id: item.id }
-      })}
+      style={[styles.songItem, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+      onPress={() => router.push(`/song-details?id=${item.id}`)}
     >
-      <View style={[styles.numberBadge, { backgroundColor: colors.accent }]}>
-        <Text style={styles.numberText}>{item.number}</Text>
+      <View style={[styles.songIcon, { backgroundColor: colors.background }]}>
+        <Ionicons name="musical-note" size={20} color={colors.accent} />
       </View>
       <View style={styles.songInfo}>
-        <Text numberOfLines={1} style={[styles.songTitle, { color: colors.text }]}>
-          {item.title}
-        </Text>
-        <Text style={[styles.songCategory, { color: colors.text, opacity: 0.6 }]}>
-          {item.category.charAt(0).toUpperCase() + item.category.slice(1)} • {item.sourceBook}
+        <Text style={[styles.songTitle, { color: colors.text }]}>{item.title}</Text>
+        <Text style={[styles.songSubtitle, { color: colors.text, opacity: 0.5 }]}>
+          #{item.number} • {item.sourceBook}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.accent} />
+      <Ionicons name="chevron-forward" size={18} color={colors.text} style={{ opacity: 0.3 }} />
     </TouchableOpacity>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header & Search */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Song Catalog</Text>
-        <View style={[styles.searchBarContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Ionicons name="search" size={20} color={colors.text} style={styles.searchIcon} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search by title or number..."
-            placeholderTextColor={colors.isDark ? '#666' : '#999'}
+        <Text style={[styles.title, { color: colors.text }]}>All Songs</Text>
+        <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Ionicons name="search" size={20} color={colors.text} style={{ opacity: 0.5 }} />
+          <TextInput 
+            style={[styles.searchInput, { color: colors.text }]} 
+            placeholder="Search by title or number..." 
+            placeholderTextColor={colors.text} 
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {searchQuery !== '' && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={colors.text} />
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
-      {/* Grid List */}
-      <FlatList
+      <FlatList 
         data={filteredSongs}
-        renderItem={renderSongItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.text }]}>No songs found matching "{searchQuery}"</Text>
-          </View>
-        }
+        renderItem={renderSongItem}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
@@ -94,79 +63,57 @@ export default function SongsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 30,
   },
   header: {
-    marginBottom: 30,
+    padding: 24,
+    paddingTop: 40,
+    gap: 20,
   },
-  headerTitle: {
+  title: {
     fontSize: 32,
     fontWeight: '800',
-    marginBottom: 20,
   },
-  searchBarContainer: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-  },
-  searchIcon: {
-    marginRight: 10,
-    opacity: 0.5,
+    gap: 12,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
   },
-  listContent: {
+  listContainer: {
+    padding: 24,
+    gap: 12,
     paddingBottom: 40,
   },
-  columnWrapper: {
-    justifyContent: 'space-between',
-  },
-  songCard: {
-    width: '48.5%',
+  songItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 15,
+    gap: 16,
   },
-  numberBadge: {
+  songIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    borderRadius: 10,
     alignItems: 'center',
-    marginRight: 12,
-  },
-  numberText: {
-    color: '#000',
-    fontWeight: '700',
-    fontSize: 14,
+    justifyContent: 'center',
   },
   songInfo: {
     flex: 1,
-    marginRight: 8,
   },
   songTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontWeight: '600',
   },
-  songCategory: {
-    fontSize: 12,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    opacity: 0.5,
+  songSubtitle: {
+    fontSize: 13,
   },
 });

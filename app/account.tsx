@@ -1,86 +1,52 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useBeholdTheme } from '../src/context/ThemeContext';
 
-/**
- * Account Management & Configuration Control Dashboard.
- */
 export default function AccountScreen() {
-  const { colors, isDark, toggleTheme } = useBeholdTheme();
+  const { colors } = useBeholdTheme();
+
+  const accountSettings = [
+    { name: 'Profile', icon: 'person-outline', detail: 'Manage your personal info' },
+    { name: 'Notifications', icon: 'notifications-outline', detail: 'Configure alerts and updates' },
+    { name: 'Preferences', icon: 'settings-outline', detail: 'Customize your experience' },
+    { name: 'Privacy', icon: 'lock-closed-outline', detail: 'Manage your data and security' },
+  ];
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={[styles.title, { color: colors.text }]}>Account</Text>
-
-      {/* Profile Card Section */}
-      <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
+      <View style={styles.profileHeader}>
         <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-          <Ionicons name="person" size={40} color="#000" />
+          <Ionicons name="person" size={40} color={colors.background} />
         </View>
-        <View style={styles.profileInfo}>
-          <Text style={[styles.userName, { color: colors.text }]}>Behold User</Text>
-          <Text style={[styles.userEmail, { color: colors.text, opacity: 0.6 }]}>premium@behold.app</Text>
-        </View>
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>24</Text>
-            <Text style={[styles.statLabel, { color: colors.text }]}>Lessons</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>12</Text>
-            <Text style={[styles.statLabel, { color: colors.text }]}>Songs</Text>
-          </View>
-        </View>
+        <Text style={[styles.userName, { color: colors.text }]}>User Name</Text>
+        <Text style={[styles.userEmail, { color: colors.text, opacity: 0.5 }]}>user@example.com</Text>
       </View>
 
-      {/* System Settings Group Container */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text, opacity: 0.5 }]}>SYSTEM SETTINGS</Text>
-        
-        <View style={[styles.settingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.settingLabelGroup}>
-            <Ionicons name={isDark ? "moon" : "sunny"} size={22} color={colors.accent} />
-            <Text style={[styles.settingLabel, { color: colors.text }]}>App Color Theme Configuration</Text>
-          </View>
-          <Switch
-            trackColor={{ false: '#767577', true: colors.accent }}
-            thumbColor={isDark ? '#fff' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-            onValueChange={toggleTheme}
-            value={isDark}
-          />
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Settings</Text>
+        <View style={styles.settingsList}>
+          {accountSettings.map((setting) => (
+            <TouchableOpacity 
+              key={setting.name} 
+              style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name={setting.icon as any} size={22} color={colors.accent} />
+                <View style={styles.settingTextContainer}>
+                  <Text style={[styles.settingName, { color: colors.text }]}>{setting.name}</Text>
+                  <Text style={[styles.settingDetail, { color: colors.text, opacity: 0.5 }]}>{setting.detail}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.text} style={{ opacity: 0.3 }} />
+            </TouchableOpacity>
+          ))}
         </View>
-
-        <TouchableOpacity style={[styles.settingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.settingLabelGroup}>
-            <Ionicons name="mic-outline" size={22} color={colors.accent} />
-            <Text style={[styles.settingLabel, { color: colors.text }]}>Acoustic Microphone Input Calibration Adjustments</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.text} style={{ opacity: 0.3 }} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.settingRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.settingLabelGroup}>
-            <Ionicons name="cloud-upload-outline" size={22} color={colors.accent} />
-            <Text style={[styles.settingLabel, { color: colors.text }]}>Cloud Sync Configuration Profiles</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.text} style={{ opacity: 0.3 }} />
-        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.signOutButton}>
-        <Text style={[styles.signOutText, { color: '#FF3B30' }]}>Sign Out</Text>
+      <TouchableOpacity style={[styles.logoutButton, { borderColor: colors.error }]}>
+        <Ionicons name="log-out-outline" size={22} color={colors.error} />
+        <Text style={[styles.logoutText, { color: colors.error }]}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -90,19 +56,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
-    padding: 30,
-    paddingBottom: 60,
+  contentContainer: {
+    padding: 24,
+    paddingTop: 40,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: 30,
-  },
-  profileCard: {
-    padding: 25,
-    borderRadius: 24,
-    borderWidth: 1,
+  profileHeader: {
     alignItems: 'center',
     marginBottom: 40,
   },
@@ -110,78 +68,63 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  profileInfo: {
-    alignItems: 'center',
-    marginBottom: 25,
+    marginBottom: 16,
   },
   userName: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(128,128,128,0.1)',
-    paddingTop: 20,
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statValue: {
     fontSize: 24,
     fontWeight: '800',
-    marginBottom: 2,
   },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.5,
+  userEmail: {
+    fontSize: 16,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 1.5,
-    marginBottom: 15,
-    marginLeft: 5,
+    marginBottom: 16,
   },
-  settingRow: {
+  settingsList: {
+    gap: 12,
+  },
+  settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 18,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 12,
   },
-  settingLabelGroup: {
+  settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
   },
-  settingLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 15,
+  settingTextContainer: {
+    gap: 4,
   },
-  signOutButton: {
-    alignItems: 'center',
-    padding: 20,
-    marginTop: 10,
-  },
-  signOutText: {
+  settingName: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  settingDetail: {
+    fontSize: 13,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 12,
+    marginTop: 20,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
