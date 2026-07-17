@@ -1,44 +1,70 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useBeholdTheme } from '../hooks/use-behold-theme';
 import { INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
 
-export default function SongsLibrary() {
-  const [activeCategory, setActiveCategory] = useState<'hymn' | 'children' | 'youth'>('hymn');
+type SongCategory = 'hymn' | 'children' | 'youth';
 
-  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter(
-    (song) => song.category === activeCategory
-  );
+export default function SongsScreen() {
+  const { colors } = useBeholdTheme();
+  const router = useRouter();
+  const [activeCategory, setActiveCategory] = useState<SongCategory>('hymn');
+
+  const categories: { id: SongCategory; label: string }[] = [
+    { id: 'hymn', label: 'Hymns' },
+    { id: 'children', label: "Children's Songbook" },
+    { id: 'youth', label: 'Youth Album' }
+  ];
+
+  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter(song => song.category === activeCategory);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Song Library</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>Music Catalog</Text>
       
-      <View style={styles.tabRow}>
-        {(['hymn', 'children', 'youth'] as const).map((category) => (
-          <TouchableOpacity
-            key={category}
-            style={[styles.tab, activeCategory === category && styles.activeTab]}
-            onPress={() => setActiveCategory(category)}
-          >
-            <Text style={[styles.tabText, activeCategory === category && styles.activeTabText]}>
-              {category === 'hymn' ? 'Hymns' : category === 'children' ? "Children's Songbook" : 'Youth Album'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
+        {categories.map((cat) => {
+          const isActive = activeCategory === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => setActiveCategory(cat.id)}
+              style={[
+                styles.tabItem,
+                isActive && { borderBottomColor: colors.accent }
+              ]}
+            >
+              <Text style={[
+                styles.tabText, 
+                { color: isActive ? colors.accent : colors.text, fontWeight: isActive ? '700' : '500' }
+              ]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <ScrollView contentContainerStyle={styles.grid}>
-        {filteredSongs.map((song) => (
-          <View key={song.id} style={styles.songCard}>
-            <Text style={styles.songNumber}>{song.number}</Text>
-            <Text style={styles.songTitle}>{song.title}</Text>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaText}>{song.difficulty.toUpperCase()}</Text>
-              <Text style={styles.metaText}>{song.tempo}</Text>
+      <FlatList
+        data={filteredSongs}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.songCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.push({ pathname: '/song-details', params: { id: item.id } })}
+          >
+            <View style={[styles.badge, { backgroundColor: colors.accent }]}>
+              <Text style={styles.badgeText}>{item.number}</Text>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+            <View style={styles.songInfo}>
+              <Text style={[styles.songTitle, { color: colors.text }]}>{item.title}</Text>
+              <Text style={[styles.songSource, { color: colors.text }]}>{item.sourceBook}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
     </View>
   );
 }
@@ -46,67 +72,64 @@ export default function SongsLibrary() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
+    paddingTop: 50,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
+    paddingHorizontal: 24,
     marginBottom: 16,
   },
-  tabRow: {
+  tabBar: {
     flexDirection: 'row',
-    marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  tab: {
+  tabItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-  },
-  activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
+    borderBottomColor: 'transparent',
   },
   tabText: {
-    color: '#666',
-    fontWeight: '600',
+    fontSize: 14,
   },
-  activeTabText: {
-    color: '#007AFF',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  listContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
   songCard: {
-    width: '47%',
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    marginBottom: 12,
   },
-  songNumber: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
+  badge: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  badgeText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  songInfo: {
+    flex: 1,
   },
   songTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metaText: {
-    fontSize: 10,
-    color: '#007AFF',
-    fontWeight: 'bold',
+  songSource: {
+    fontSize: 13,
+    opacity: 0.6,
   },
 });

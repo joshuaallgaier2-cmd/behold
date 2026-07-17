@@ -1,48 +1,25 @@
-import { BlurView } from 'expo-blur';
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 
 interface LiquidGlassViewProps {
   children: React.ReactNode;
-  style?: ViewStyle;
-  blurIntensity?: number;
-  tint?: 'light' | 'dark' | 'default';
-  borderColor?: string;
-  borderWidth?: number;
+  style?: ViewStyle | ViewStyle[];
 }
 
-export const LiquidGlassView: React.FC<LiquidGlassViewProps> = ({ 
-  children, 
-  style, 
-  blurIntensity = 20, 
-  tint = 'default', 
-  borderColor, 
-  borderWidth = 1 
-}) => {
+export function LiquidGlassView({ children, style }: LiquidGlassViewProps) {
   return (
-    <View style={[styles.container, style]}>
-      <BlurView 
-        intensity={blurIntensity} 
-        tint={tint} 
-        style={[
-          styles.blur, 
-          { borderColor, borderWidth }
-        ]} 
-      >
-        {children}
-      </BlurView>
+    <View style={[styles.glassContainer, style]}>
+      {children}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    overflow: 'hidden',
-    borderRadius: 20,
-  },
-  blur: {
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
+  glassContainer: {
+    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
   },
 });

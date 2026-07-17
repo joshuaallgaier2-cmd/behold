@@ -1,210 +1,240 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useBeholdTheme } from '../src/context/ThemeContext';
-import { INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated';
+import { ThemedText } from '../components/themed-text';
+import { ThemedView } from '../components/themed-view';
+import { useBeholdTheme } from '../hooks/use-behold-theme';
+import { INTERACTIVE_MUSIC_DATABASE, InteractiveSong } from '../src/data/musicData';
+import { audioEngine } from '../src/services/audioEngine';
 
-export default function SongDetailsScreen() {
-  const router = useRouter();
+const { width: WINDOW_WIDTH } = Dimensions.get('window');
+const STAFF_HEIGHT = 200;
+const PLAYHEAD_X = WINDOW_WIDTH * 0.2;
+const PIXELS_PER_MS = 0.15;
+
+const PITCH_MAP: Record<string, number> = {
+  'C4': 0,
+  'D4': 1,
+  'E4': 2,
+  'F4': 3,
+  'G4': 4,
+  'A4': 5,
+  'B4': 6,
+  'C5': 7,
+};
+
+export default function SongDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors } = useBeholdTheme();
+  const theme = useBeholdTheme();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentSong, setCurrentSong] = useState<InteractiveSong | null>(null);
+  
+  const scrollX = useSharedValue(0);
+  const requestRef = useRef<number | null>(null);
 
-  const song = INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id);
+  useEffect(() => {
+    const song = INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id);
+    setCurrentSong(song || null);
+  }, [id]);
 
-  const handleTimeUpdate = (time: number) => {
-    console.log('Time updated:', time);
+  useEffect(() => {
+    audioEngine.init();
+  }, []);
+
+  useEffect(() => {
+    if (isPlaying) {
+      const updatePosition = async () => {
+        const position = await audioEngine.getCurrentPosition();
+        scrollX.value = position * PIXELS_PER_MS;
+        requestRef.current = requestAnimationFrame(updatePosition);
+      };
+      requestRef.current = requestAnimationFrame(updatePosition);
+    } else {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    }
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [isPlaying]);
+
+  const togglePlayback = async () => {
+    if (!currentSong) return;
+
+    if (isPlaying) {
+      await audioEngine.pause();
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+      // Directly use the song's audio files for playback
+      await audioEngine.play({
+        uri: `http://localhost:8081/assets/audio/${currentSong.id}_accomp.mp3` // Placeholder, adjust as needed
+      }, {
+        uri: `http://localhost:8081/assets/audio/${currentSong.id}_vocals.mp3` // Placeholder, adjust as needed
+      });
+    }
   };
 
-  if (!song) {
-    return (
-      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-        <Text style={[styles.errorText, { color: colors.text }]}>Song not found</Text>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-          onPress={() => router.back()}
-        >
-          <Text style={[styles.backButtonText, { color: colors.text }]}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const resetPlayback = async () => {
+    await audioEngine.stop();
+    setIsPlaying(false);
+    scrollX.value = withTiming(0, { duration: 300 });
+  };
+
+  const animatedStaffStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: scrollX.value }],
+  }));
+
+  if (!currentSong) return null;
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
-      <TouchableOpacity 
-        style={[styles.backButtonSmall, { backgroundColor: colors.surface, borderColor: colors.border }]} 
-        onPress={() => router.back()}
-      >
-        <Ionicons name="arrow-back" size={20} color={colors.text} />
-      </TouchableOpacity>
+    <ThemedView style={styles.container}>
+      <Stack.Screen 
+        options={{
+          title: currentSong.title,
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.text,
+        }}
+      />
 
       <View style={styles.header}>
-        <Text style={[styles.songNumber, { color: colors.accent }]}>#{song.number}</Text>
-        <Text style={[styles.songTitle, { color: colors.text }]}>{song.title}</Text>
-        <Text style={[styles.songSource, { color: colors.text, opacity: 0.5 }]}>{song.sourceBook}</Text>
+        <ThemedText style={styles.title}>{currentSong.title}</ThemedText>
+        <ThemedText style={styles.subtitle}>{currentSong.number}</ThemedText>
       </View>
 
-      <View style={[styles.playerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.playerControls}>
-          <TouchableOpacity style={styles.controlButton}>
-            <Ionicons name="play-back" size={32} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.playButton, { backgroundColor: colors.accent }]}>
-            <Ionicons name="play" size={40} color={colors.background} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.controlButton}>
-            <Ionicons name="play-forward" size={32} color={colors.text} />
-          </TouchableOpacity>
+      <View style={[styles.canvasContainer, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.staffLinesContainer}>
+          {[...Array(5)].map((_, i) => (
+            <View 
+              key={i} 
+              style={[styles.staffLine, { backgroundColor: theme.colors.border }]} 
+            />
+          ))}
         </View>
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-            <View style={[styles.progressFill, { backgroundColor: colors.accent }]} />
-          </View>
-          <View style={styles.timeContainer}>
-            <Text style={[styles.timeText, { color: colors.text, opacity: 0.5 }]}>1:23</Text>
-            <Text style={[styles.timeText, { color: colors.text, opacity: 0.5 }]}>3:45</Text>
-          </View>
-        </View>
+
+        <View style={[styles.playhead, { backgroundColor: theme.colors.primary }]} />
+
+        <Animated.View style={[styles.noteStrip, animatedStaffStyle]}>
+          {currentSong.notes.map((note) => {
+            const pitchY = PITCH_MAP[note.pitch] ?? 0;
+            return (
+              <View 
+                key={note.id} 
+                style={[
+                  styles.note, 
+                  {
+                    left: note.timeMs * PIXELS_PER_MS,
+                    bottom: (pitchY * 10) + 40,
+                    backgroundColor: theme.colors.primary 
+                  }
+                ]} 
+              />
+            );
+          })}
+        </Animated.View>
       </View>
 
-      <View style={styles.detailsSection}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Song Details</Text>
-        <View style={[styles.detailRow, { borderColor: colors.border }]}>
-          <Text style={[styles.detailLabel, { color: colors.text, opacity: 0.5 }]}>Category</Text>
-          <Text style={[styles.detailValue, { color: colors.text }]}>{song.category}</Text>
-        </View>
-        <View style={[styles.detailRow, { borderColor: colors.border }]}>
-          <Text style={[styles.detailLabel, { color: colors.text, opacity: 0.5 }]}>ID</Text>
-          <Text style={[styles.detailValue, { color: colors.text }]}>{song.id}</Text>
-        </View>
+      <View style={styles.controls}>
+        <TouchableOpacity 
+          style={[styles.button, { backgroundColor: theme.colors.primary }]} 
+          onPress={togglePlayback}
+        >
+          <ThemedText style={styles.buttonText}>
+            {isPlaying ? 'PAUSE' : 'PLAY'}
+          </ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.button, { backgroundColor: theme.colors.border }]} 
+          onPress={resetPlayback}
+        >
+          <ThemedText style={styles.buttonText}>RESET</ThemedText>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  contentContainer: {
-    padding: 24,
-    paddingTop: 40,
-  },
-  backButtonSmall: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    marginBottom: 24,
+    padding: 20,
   },
   header: {
-    alignItems: 'center',
     marginBottom: 40,
-    gap: 8,
-  },
-  songNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  songTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  songSource: {
-    fontSize: 18,
-  },
-  playerContainer: {
-    padding: 24,
-    borderRadius: 32,
-    borderWidth: 1,
-    marginBottom: 40,
-  },
-  playerControls: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    marginBottom: 32,
   },
-  controlButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
-  playButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
   },
-  progressBarContainer: {
-    gap: 12,
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
+  canvasContainer: {
+    height: STAFF_HEIGHT,
+    width: '100%',
+    borderRadius: 12,
     overflow: 'hidden',
-  },
-  progressFill: {
-    width: '30%',
-    height: '100%',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  timeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  detailsSection: {
-    gap: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 16,
+    position: 'relative',
     borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
-  detailLabel: {
-    fontSize: 16,
-  },
-  detailValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
+  staffLinesContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
-    padding: 24,
+    paddingVertical: 20,
   },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginVertical: 16,
+  staffLine: {
+    height: 2,
+    marginVertical: 10,
+    width: '100%',
   },
-  backButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
+  playhead: {
+    position: 'absolute',
+    left: PLAYHEAD_X,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    zIndex: 10,
   },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  noteStrip: {
+    position: 'absolute',
+    top: 0,
+    left: PLAYHEAD_X,
+    height: '100%',
+    width: 5000,
+  },
+  note: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  controls: {
+    marginTop: 40,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+  },
+  button: {
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontWeight: 'bold',
+    color: 'white',
   },
 });

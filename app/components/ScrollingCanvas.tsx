@@ -5,7 +5,6 @@ import { NoteEvent } from '../../src/data/musicData';
 interface ScrollingCanvasProps {
   notes: NoteEvent[];
   currentTimeMs: number;
-  introDurationMs: number;
   bpm: number;
   hitNoteIds: string[];
   missedNoteIds: string[];
@@ -14,7 +13,6 @@ interface ScrollingCanvasProps {
 const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({
   notes,
   currentTimeMs,
-  introDurationMs,
   bpm,
   hitNoteIds,
   missedNoteIds,
@@ -34,8 +32,6 @@ const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({
     />
   ));
 
-  // Determine if intro is playing
-  const isIntroPlaying = currentTimeMs < introDurationMs;
 
   return (
     <View style={styles.container}>
@@ -45,8 +41,8 @@ const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({
       <View style={styles.hitLine} />
 
       {/* Notes */}
-      {!isIntroPlaying && notes.map((note) => {
-        const leftPositionX = 90 + (note.startTimeMs - currentTimeMs) * pixelsPerMs;
+      {notes.map((note) => {
+        const leftPositionX = 90 + (note.timeMs - currentTimeMs) * pixelsPerMs;
         const noteWidth = note.durationMs * pixelsPerMs;
 
         // Resolve vertical offsets based on note pitch.
@@ -100,12 +96,6 @@ const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({
         );
       })}
 
-      {/* Intro Solo Playing Overlay */}
-      {isIntroPlaying && (
-        <View style={styles.introOverlay}>
-          <Text style={styles.introText}>Introduction Solo Playing - Match Tempo!</Text>
-        </View>
-      )}
     </View>
   );
 };
