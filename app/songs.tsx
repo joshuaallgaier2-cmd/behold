@@ -52,7 +52,7 @@ export default function SongsScreen() {
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.songCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[styles.songCard, { backgroundColor: colors.background, borderColor: colors.border }]}
             onPress={() => router.push({ pathname: '/song-details', params: { id: item.id } })}
           >
             <View style={[styles.badge, { backgroundColor: colors.accent }]}>
