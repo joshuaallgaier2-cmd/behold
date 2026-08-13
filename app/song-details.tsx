@@ -1,16 +1,15 @@
+import { ThemedView } from '@/components/themed-view';
+import { useBeholdTheme } from '@/hooks/use-behold-theme';
+import { INTERACTIVE_MUSIC_DATABASE, InteractiveSong, NoteEvent } from '@/src/data/musicData';
+import { audioEngine } from '@/src/services/audioEngine';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming
 } from 'react-native-reanimated';
-import { ThemedText } from '../components/themed-text';
-import { ThemedView } from '../components/themed-view';
-import { useBeholdTheme } from '../hooks/use-behold-theme';
-import { INTERACTIVE_MUSIC_DATABASE, InteractiveSong } from '../src/data/musicData';
-import { audioEngine } from '../src/services/audioEngine';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 const STAFF_HEIGHT = 200;
@@ -38,13 +37,9 @@ export default function SongDetails() {
   const requestRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const song = INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id);
+    const song = INTERACTIVE_MUSIC_DATABASE.find((s: InteractiveSong) => s.id === id);
     setCurrentSong(song || null);
   }, [id]);
-
-  useEffect(() => {
-    audioEngine.init();
-  }, []);
 
   useEffect(() => {
     if (isPlaying) {
@@ -63,19 +58,19 @@ export default function SongDetails() {
   }, [isPlaying]);
 
   const togglePlayback = async () => {
-    if (!currentSong) return;
+    if (!currentSong || !currentSong.accompAudioKey || !currentSong.vocalAudioKey) {
+      console.warn('Missing audio keys or song data.');
+      return;
+    }
 
     if (isPlaying) {
       await audioEngine.pause();
       setIsPlaying(false);
     } else {
       setIsPlaying(true);
-      // Directly use the song's audio files for playback
-      await audioEngine.play({
-        uri: `http://localhost:8081/assets/audio/${currentSong.id}_accomp.mp3` // Placeholder, adjust as needed
-      }, {
-        uri: `http://localhost:8081/assets/audio/${currentSong.id}_vocals.mp3` // Placeholder, adjust as needed
-      });
+      const accompUri = `http://localhost:8081/assets/audio/${currentSong.accompAudioKey}`;
+      const vocalUri = `http://localhost:8081/assets/audio/${currentSong.vocalAudioKey}`;
+      await audioEngine.playTracks(accompUri, vocalUri);
     }
   };
 
@@ -89,7 +84,16 @@ export default function SongDetails() {
     transform: [{ translateX: scrollX.value }],
   }));
 
-  if (!currentSong) return null;
+  if (!currentSong) {
+    return (
+      <ThemedView style={styles.container}>
+        <Text style={styles.loadingText}>Loading song details...</Text>
+      </ThemedView>
+    );
+  }
+
+  const notes = currentSong.notes ?? [];
+  const pageKeys = currentSong.pageKeys ?? [];
 
   return (
     <ThemedView style={styles.container}>
@@ -102,8 +106,8 @@ export default function SongDetails() {
       />
 
       <View style={styles.header}>
-        <ThemedText style={styles.title}>{currentSong.title}</ThemedText>
-        <ThemedText style={styles.subtitle}>{currentSong.number}</ThemedText>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{currentSong.title}</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.muted }]}>{currentSong.number}</Text>
       </View>
 
       <View style={[styles.canvasContainer, { backgroundColor: theme.colors.background }]}>
@@ -119,7 +123,7 @@ export default function SongDetails() {
         <View style={[styles.playhead, { backgroundColor: theme.colors.primary }]} />
 
         <Animated.View style={[styles.noteStrip, animatedStaffStyle]}>
-          {currentSong.notes.map((note) => {
+          {(currentSong?.notes ?? []).map((note: NoteEvent) => {
             const pitchY = PITCH_MAP[note.pitch] ?? 0;
             return (
               <View 
@@ -138,21 +142,28 @@ export default function SongDetails() {
         </Animated.View>
       </View>
 
+      {/* Safe mapping verification for optional array attributes with defensive checks */}
+      <View style={{ marginTop: 10 }}>
+        {(currentSong?.pageKeys ?? []).map((key, index) => (
+          <Text key={index} style={{ color: theme.colors.muted, fontSize: 12 }}>Page Key: {key}</Text>
+        ))}
+      </View>
+
       <View style={styles.controls}>
         <TouchableOpacity 
           style={[styles.button, { backgroundColor: theme.colors.primary }]} 
           onPress={togglePlayback}
         >
-          <ThemedText style={styles.buttonText}>
+          <Text style={styles.buttonText}>
             {isPlaying ? 'PAUSE' : 'PLAY'}
-          </ThemedText>
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.button, { backgroundColor: theme.colors.border }]} 
           onPress={resetPlayback}
         >
-          <ThemedText style={styles.buttonText}>RESET</ThemedText>
+          <Text style={styles.buttonText}>RESET</Text>
         </TouchableOpacity>
       </View>
     </ThemedView>
@@ -236,5 +247,10 @@ const styles = StyleSheet.create({
   buttonText: {
     fontWeight: 'bold',
     color: 'white',
+  },
+  loadingText: {
+    fontSize: 18,
+    textAlign: 'center',
+    marginTop: 50,
   },
 });
