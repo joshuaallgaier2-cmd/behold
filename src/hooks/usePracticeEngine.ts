@@ -186,10 +186,8 @@ export function usePracticeEngine(
    */
   useEffect(() => {
     const prevMap = prevEvaluationMapRef.current;
-    let newCorrect = stats.correctCount;
-    let newIncorrect = stats.incorrectCount;
-    let currentStreak = stats.currentStreak;
-    let longestStreak = stats.longestStreak;
+    let deltaCorrect = 0;
+    let deltaIncorrect = 0;
 
     for (const note of allTargetNotes) {
       const prevState = prevMap[note.id];
@@ -198,60 +196,57 @@ export function usePracticeEngine(
       // Detect state change (pending -> correct/incorrect)
       if (prevState !== currentState) {
         if (currentState === 'correct') {
-          newCorrect += 1;
-          currentStreak += 1;
-          longestStreak = Math.max(longestStreak, currentStreak);
-
-          // Track cents deviation for averaging
+          deltaCorrect += 1;
           centsDeviationsRef.current.push(0);
         } else if (currentState === 'incorrect') {
-          newIncorrect += 1;
-          currentStreak = 0;
-
-          // Penalty: reduce score by 5 points per error
-          setStats((prev) => ({
-            ...prev,
-            score: Math.max(0, prev.score - 5),
-          }));
+          deltaIncorrect += 1;
         }
       }
     }
 
     prevEvaluationMapRef.current = evaluationMap;
 
-    // Calculate updated accuracy
-    const totalAttempted = newCorrect + newIncorrect;
-    const accuracy =
-      totalAttempted > 0 ? Math.round((newCorrect / totalAttempted) * 100) : 100;
-
-    // Calculate average cents deviation
-    const avgCentsDeviation =
-      centsDeviationsRef.current.length > 0
-        ? Math.abs(
-            centsDeviationsRef.current.reduce((a, b) => a + b, 0) /
-              centsDeviationsRef.current.length,
-          )
-        : 0;
-
-    setStats((prev) => ({
-      ...prev,
-      correctCount: newCorrect,
-      incorrectCount: newIncorrect,
-      currentStreak,
-      longestStreak,
-      accuracyPercentage: accuracy,
-      averageCentsDeviation: avgCentsDeviation,
-    }));
-
-    // Auto-pause in "follow" mode if note is missed
-    if (
-      config.mode === 'follow' &&
-      newIncorrect > 0 &&
-      (config.autoResumeMissedNotes ?? true)
-    ) {
-      setShouldAutoPause(true);
+    if (deltaCorrect === 0 && deltaIncorrect === 0) {
+      return;
     }
-  }, [evaluationMap, allTargetNotes, config.mode, config.autoResumeMissedNotes, stats.correctCount, stats.incorrectCount, stats.currentStreak, stats.longestStreak]);
+
+    setStats((prev) => {
+      const correctCount = prev.correctCount + deltaCorrect;
+      const incorrectCount = prev.incorrectCount + deltaIncorrect;
+      const currentStreak = deltaIncorrect > 0 ? 0 : prev.currentStreak + deltaCorrect;
+      const longestStreak = Math.max(prev.longestStreak, currentStreak);
+      const score = Math.max(0, prev.score - deltaIncorrect * 5);
+      const totalAttempted = correctCount + incorrectCount;
+      const accuracyPercentage =
+        totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 100;
+      const averageCentsDeviation =
+        centsDeviationsRef.current.length > 0
+          ? Math.abs(
+              centsDeviationsRef.current.reduce((a, b) => a + b, 0) /
+                centsDeviationsRef.current.length,
+            )
+          : 0;
+
+      if (
+        config.mode === 'follow' &&
+        incorrectCount > 0 &&
+        (config.autoResumeMissedNotes ?? true)
+      ) {
+        setShouldAutoPause(true);
+      }
+
+      return {
+        ...prev,
+        score,
+        correctCount,
+        incorrectCount,
+        currentStreak,
+        longestStreak,
+        accuracyPercentage,
+        averageCentsDeviation,
+      };
+    });
+  }, [evaluationMap, allTargetNotes, config.mode, config.autoResumeMissedNotes]);
 
   /**
    * Generate final performance summary.

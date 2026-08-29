@@ -1,15 +1,13 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { NoteEvent } from '../../src/data/musicData'; // Assuming NoteEvent is exported from here
+import { NoteEvent } from '../../src/data/musicData';
 
 interface ScrollingCanvasProps {
   notes: NoteEvent[];
-  // Add other necessary props like time scale, etc.
 }
 
 export const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({ notes }) => {
-  // Dummy data for now, replace with actual note rendering logic
-  const renderedNotes = notes.slice(0, 5); // Render first 5 notes as an example
+  const renderedNotes = notes.slice(0, 5);
 
   return (
     <View style={styles.container}>
@@ -22,11 +20,11 @@ export const ScrollingCanvas: React.FC<ScrollingCanvasProps> = ({ notes }) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: 200, // Same as STAFF_HEIGHT in song-details.tsx
+    height: 200,
     width: '100%',
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Example background
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
   },
   note: {
@@ -34,6 +32,8 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#FFD700', // Example color
+    backgroundColor: '#FFD700',
   },
 });
+
+export default ScrollingCanvas;

@@ -1,5 +1,5 @@
 import { LDS_MUSIC_DATABASE } from '@/src/data/musicData';
-import { initializeBeholdAudioConfiguration, safelyTeardownActiveAudioPlayback } from '@/src/services/audioEngine';
+import { audioEngine } from '@/src/services/audioEngine';
 import type { Song } from '@/src/types/music';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,11 +24,11 @@ export default function DashboardScreen() {
   const [activeTab, setActiveTab] = useState<'hymn' | 'children' | 'youth'>('hymn');
 
   useEffect(() => {
-    initializeBeholdAudioConfiguration();
+    audioEngine.initializeBeholdAudioConfiguration();
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'inactive' || nextAppState === 'background') {
-        safelyTeardownActiveAudioPlayback();
+        audioEngine.safelyTeardownActiveAudioPlayback();
       }
     });
 

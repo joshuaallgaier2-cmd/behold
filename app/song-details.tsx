@@ -8,7 +8,7 @@ import { audioEngine } from '@/src/services/audioEngine';
 import { evaluatePitchMatch, PitchFrame, startPitchListening, stopPitchListening } from '@/src/services/pitchDetector';
 import type { EvaluationMap, PracticeMode, Song, TargetNote } from '@/src/types/music';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
@@ -85,13 +85,9 @@ export default function SongDetailsScreen() {
       return null;
     }
 
-    const nextActiveIndex = song.targetNotes.findIndex((note, index) => {
+    const nextActiveIndex = song.targetNotes.findIndex((note) => {
       const noteWindowEnd = note.timestampMs + note.durationMs + 200;
-      const isCurrent = currentTimeMs >= note.timestampMs && currentTimeMs <= noteWindowEnd;
-      if (isCurrent) {
-        setActiveNoteIndex(index);
-      }
-      return isCurrent;
+      return currentTimeMs >= note.timestampMs && currentTimeMs <= noteWindowEnd;
     });
 
     if (nextActiveIndex >= 0) {
@@ -171,15 +167,17 @@ export default function SongDetailsScreen() {
     }
 
     setEvaluationMap((previous) => {
+      let hasChanges = false;
       const next = { ...previous };
       for (const note of song.targetNotes) {
         const currentState = previous[note.id] ?? 'pending';
         const noteExpired = currentTimeMs > note.timestampMs + note.durationMs + 150;
         if (currentState === 'pending' && noteExpired) {
           next[note.id] = 'incorrect';
+          hasChanges = true;
         }
       }
-      return next;
+      return hasChanges ? next : previous;
     });
   }, [currentTimeMs, song]);
 
@@ -191,7 +189,7 @@ export default function SongDetailsScreen() {
     }
   }, [isPlaying, currentTimeMs, totalDurationMs]);
 
-  const handlePitchDetected = (hz: number, frame?: PitchFrame) => {
+  const handlePitchDetected = useCallback((hz: number, frame?: PitchFrame) => {
     setDetectedPitchHz(hz);
     if (frame) {
       setDetectedPitchFrame(frame);
@@ -206,7 +204,7 @@ export default function SongDetailsScreen() {
       ...previous,
       [activeNote.id]: pitchMatches ? 'correct' : 'incorrect',
     }));
-  };
+  }, [song, activeNote]);
 
   const togglePlayback = async () => {
     if (!song) {

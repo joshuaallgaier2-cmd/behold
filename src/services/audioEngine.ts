@@ -1,17 +1,15 @@
-import { Audio } from 'expo-av';
+import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
-let accompanimentInstance: InstanceType<typeof Audio.Sound> | null = null;
-let vocalInstance: InstanceType<typeof Audio.Sound> | null = null;
+let accompanimentInstance: AudioPlayer | null = null;
+let vocalInstance: AudioPlayer | null = null;
 
 export async function initializeBeholdAudioConfiguration() {
   try {
-    // Use numeric raw values for compatibility with SDK 54
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: false,
-      interruptionModeIOS: 1, // DoNotMix
-      interruptionModeAndroid: 1, // DoNotMix
-      shouldDuckAndroid: false,
-      staysActiveInBackground: false,
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: false,
+      interruptionMode: 'mixWithOthers',
+      interruptionModeAndroid: 'duckOthers',
     });
     console.log('Audio configuration initialized successfully.');
   } catch (error) {
@@ -19,31 +17,58 @@ export async function initializeBeholdAudioConfiguration() {
   }
 }
 
+function isValidHttpUrl(url: string): boolean {
+  let urlObj;
+  try {
+    urlObj = new URL(url);
+  } catch {
+    return false;
+  }
+  return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+}
+
 export async function playTracks(accompUri: string, vocalUri: string) {
   try {
-    await initializeBeholdAudioConfiguration(); // Ensure config is set before playing
+    // Initialize config if not already done
+    if (!accompanimentInstance && !vocalInstance) {
+      await initializeBeholdAudioConfiguration();
+    }
 
-    const accompSource = { uri: accompUri };
-    const vocalSource = { uri: vocalUri };
+    // Validate URLs before attempting to play
+    if (!isValidHttpUrl(accompUri)) {
+      console.error('Invalid accompaniment URL:', accompUri);
+      // Consider throwing an error or returning false if URL is invalid
+      return;
+    }
+    if (!isValidHttpUrl(vocalUri)) {
+      console.error('Invalid vocal URL:', vocalUri);
+      // Consider throwing an error or returning false if URL is invalid
+      return;
+    }
 
     if (!accompanimentInstance) {
-      accompanimentInstance = new Audio.Sound();
+      accompanimentInstance = createAudioPlayer(null);
+      accompanimentInstance.shouldCorrectPitch = true;
     }
-    await accompanimentInstance.loadAsync(accompSource, { shouldPlay: false });
+    // Use replace to load the new source
+    accompanimentInstance.replace(accompUri);
+    accompanimentInstance.volume = 1.0; // Set default volume, can be adjusted later
 
     if (!vocalInstance) {
-      vocalInstance = new Audio.Sound();
+      vocalInstance = createAudioPlayer(null);
+      vocalInstance.shouldCorrectPitch = false; // Typically don't correct pitch for vocals
     }
-    await vocalInstance.loadAsync(vocalSource, { shouldPlay: false });
+    vocalInstance.replace(vocalUri);
+    vocalInstance.volume = 1.0; // Set default volume
 
-    // Play both simultaneously
-    await accompanimentInstance.playFromPositionAsync(0);
-    await vocalInstance.playFromPositionAsync(0);
+    // Play both simultaneously from the beginning
+    accompanimentInstance.play();
+    vocalInstance.play();
     console.log('Both tracks started playing.');
 
   } catch (error) {
     console.error('Error playing tracks:', error);
-    // Optionally, attempt to clean up if playback fails
+    // Attempt to clean up if playback fails
     await stop();
   }
 }
@@ -51,10 +76,10 @@ export async function playTracks(accompUri: string, vocalUri: string) {
 export async function pause() {
   try {
     if (accompanimentInstance) {
-      await accompanimentInstance.pauseAsync();
+      accompanimentInstance.pause();
     }
     if (vocalInstance) {
-      await vocalInstance.pauseAsync();
+      vocalInstance.pause();
     }
     console.log('Playback paused.');
   } catch (error) {
@@ -65,13 +90,13 @@ export async function pause() {
 export async function stop() {
   try {
     if (accompanimentInstance) {
-      await accompanimentInstance.stopAsync();
-      await accompanimentInstance.unloadAsync();
+      accompanimentInstance.pause(); // Pause before stopping/removing
+      accompanimentInstance.remove();
       accompanimentInstance = null;
     }
     if (vocalInstance) {
-      await vocalInstance.stopAsync();
-      await vocalInstance.unloadAsync();
+      vocalInstance.pause(); // Pause before stopping/removing
+      vocalInstance.remove();
       vocalInstance = null;
     }
     console.log('Playback stopped and resources unloaded.');
@@ -83,10 +108,8 @@ export async function stop() {
 export async function getCurrentPosition(): Promise<number> {
   try {
     if (accompanimentInstance) {
-      const status = await accompanimentInstance.getStatusAsync();
-      if (status.isLoaded && status.positionMillis !== undefined) {
-        return status.positionMillis;
-      }
+      // Use currentTime property for current playback position
+      return accompanimentInstance.currentTime * 1000; // currentTime is in seconds
     }
   } catch (error) {
     console.error('Error getting current position:', error);
@@ -109,9 +132,15 @@ export async function safelyTeardownActiveAudioPlayback() {
 export const initializeBeholdAudioSystem = initializeBeholdAudioConfiguration;
 export const startSyncedDualTracks = playTracks;
 export const terminateAudioSession = stop;
+
 export const setVocalTrackMuteState = async (muted: boolean) => {
   if (vocalInstance) {
-    await vocalInstance.setIsMutedAsync(muted);
+    // Assuming expo-audio's AudioPlayer has an setIsMutedAsync or similar, or use volume = 0
+    // Based on investigation, expo-audio doesn't directly expose `setIsMutedAsync` on AudioPlayer.
+    // We will use volume manipulation instead.
+    if (vocalInstance) {
+      vocalInstance.volume = muted ? 0 : 1.0; // Set volume to 0 if muted, else to 1.0
+    }
   }
 };
 
