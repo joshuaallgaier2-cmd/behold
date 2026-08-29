@@ -1,4 +1,10 @@
-import { Audio } from 'expo-av';
+import {
+  AudioModule,
+  type AudioRecorder,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 
 const PITCH_RANGE_MIN_HZ = 60;
 const PITCH_RANGE_MAX_HZ = 2000;
@@ -6,7 +12,13 @@ const NOISE_FLOOR_DB = -40;
 const YIN_THRESHOLD = 0.10; // Absolute threshold to prevent octave errors
 const CENT_SCALE = 1200.0;
 
-let activeRecording: Audio.Recording | null = null;
+const PITCH_RECORDING_OPTIONS = {
+  ...RecordingPresets.HIGH_QUALITY,
+  numberOfChannels: 1,
+  isMeteringEnabled: true,
+} as const;
+
+let activeRecording: AudioRecorder | null = null;
 let activeListener: ((hz: number, frame: PitchFrame) => void) | null = null;
 let listeningTimer: ReturnType<typeof setInterval> | null = null;
 let calibratedNoiseFloorDb = NOISE_FLOOR_DB;
@@ -261,49 +273,21 @@ export async function calibrateNoiseFloor(durationMs: number): Promise<number> {
       return calibratedNoiseFloorDb;
     }
 
-    const recording = new Audio.Recording();
-    const recordingOptions = {
-      android: {
-        extension: '.m4a',
-        outputFormat: 2,
-        audioEncoder: 3,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-      },
-      ios: {
-        extension: '.m4a',
-        outputFormat: 2,
-        audioQuality: 1,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
-      },
-      web: {
-        mimeType: 'audio/webm',
-        bitsPerSecond: 128000,
-      },
-      sampleRate: 44100,
-      numberOfChannels: 1,
-      bitRate: 128000,
-      isMeteringEnabled: true,
-    } as const;
-
-    await recording.prepareToRecordAsync(recordingOptions as any);
-    await recording.startAsync();
+    const recording = createPitchRecorder();
+    await recording.prepareToRecordAsync();
+    recording.record();
 
     // Collect samples during calibration period
     const samples: number[] = [];
     const calibrationInterval = setInterval(() => {
-      const status = recording.getStatusAsync();
-      status.then((s) => {
-        if (s && typeof s.metering === 'number' && Number.isFinite(s.metering)) {
-          samples.push(Number(s.metering));
+      try {
+        const status = recording.getStatus();
+        if (status && typeof status.metering === 'number' && Number.isFinite(status.metering)) {
+          samples.push(Number(status.metering));
         }
-      }).catch(() => {
+      } catch {
         // Silently ignore errors during calibration
-      });
+      }
     }, 50);
 
     // Wait for calibration period
@@ -312,7 +296,7 @@ export async function calibrateNoiseFloor(durationMs: number): Promise<number> {
     });
 
     clearInterval(calibrationInterval);
-    await recording.stopAndUnloadAsync();
+    await safeCleanupRecording(recording);
 
     // Calculate average noise floor
     if (samples.length > 0) {
@@ -345,26 +329,28 @@ export function applyTransposition(targetHz: number, semitones: number): number 
 export interface AudioSystemState {
   isGranted: boolean;
   isRecording: boolean;
-  recordingObject: Audio.Recording | null;
+  recordingObject: AudioRecorder | null;
+}
+
+function createPitchRecorder(): AudioRecorder {
+  return new AudioModule.AudioRecorder(PITCH_RECORDING_OPTIONS);
 }
 
 export async function requestMicrophonePermissions(): Promise<boolean> {
   try {
-    const { granted } = await Audio.requestPermissionsAsync();
+    const { granted } = await requestRecordingPermissionsAsync();
 
     if (!granted) {
       console.warn('[PitchDetector] Microphone permission denied.');
       return false;
     }
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      interruptionModeIOS: 1,
-      interruptionModeAndroid: 1,
-      shouldDuckAndroid: true,
-      staysActiveInBackground: false,
-      playThroughEarpieceAndroid: false,
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+      shouldPlayInBackground: false,
+      interruptionMode: 'mixWithOthers',
+      interruptionModeAndroid: 'duckOthers',
     });
 
     return true;
@@ -374,15 +360,21 @@ export async function requestMicrophonePermissions(): Promise<boolean> {
   }
 }
 
-export async function safeCleanupRecording(recording: Audio.Recording | null): Promise<void> {
+export async function safeCleanupRecording(recording: AudioRecorder | null): Promise<void> {
   if (!recording) {
     return;
   }
 
   try {
-    const status = await recording.getStatusAsync();
-    if (status.isRecording || status.isDoneRecording === false) {
-      await recording.stopAndUnloadAsync();
+    let isRecording = false;
+    try {
+      isRecording = recording.isRecording || recording.getStatus().isRecording;
+    } catch {
+      isRecording = false;
+    }
+
+    if (isRecording) {
+      await recording.stop();
     }
   } catch (error: unknown) {
     console.error('[PitchDetector] Error during recording cleanup:', error);
@@ -403,67 +395,9 @@ export async function startPitchListening(
       activeRecording = null;
     }
 
-    const recording = new Audio.Recording();
-    const recordingOptions = {
-      android: {
-        extension: '.m4a',
-        outputFormat: 2,
-        audioEncoder: 3,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-      },
-      ios: {
-        extension: '.m4a',
-        outputFormat: 2,
-        audioQuality: 1,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
-      },
-      web: {
-        mimeType: 'audio/webm',
-        bitsPerSecond: 128000,
-      },
-      sampleRate: 44100,
-      numberOfChannels: 1,
-      bitRate: 128000,
-      isMeteringEnabled: true,
-    } as const;
-
-    await recording.prepareToRecordAsync(recordingOptions as any);
-    recording.setProgressUpdateInterval(80);
-    recording.setOnRecordingStatusUpdate((status) => {
-      if (!status.isRecording || !Number.isFinite(status.metering ?? 0)) {
-        return;
-      }
-
-      const metering = Number(status.metering ?? -100);
-      if (metering < -50) {
-        return;
-      }
-
-      const pseudoSignal = Math.max(0, 1 + metering / 100);
-      const estimatedHz = Math.min(
-        1100,
-        Math.max(80, 220 * (1 + pseudoSignal * 2.5)),
-      );
-
-      if (activeListener) {
-        // Create a basic PitchFrame for fallback
-        const fallbackFrame: PitchFrame = {
-          frequencyHz: estimatedHz,
-          pitchName: frequencyToPitchName(estimatedHz),
-          centsOff: 0,
-          clarity: 0.5,
-          volumeDb: metering,
-        };
-        activeListener(estimatedHz, fallbackFrame);
-      }
-    });
-
-    await recording.startAsync();
+    const recording = createPitchRecorder();
+    await recording.prepareToRecordAsync();
+    recording.record();
     activeRecording = recording;
     activeListener = onPitchDetected;
 
@@ -476,6 +410,31 @@ export async function startPitchListening(
         return;
       }
 
+      try {
+        const status = activeRecording.getStatus();
+        if (status.isRecording && Number.isFinite(status.metering ?? NaN)) {
+          const metering = Number(status.metering ?? -100);
+          if (metering >= -50) {
+            const pseudoSignal = Math.max(0, 1 + metering / 100);
+            const estimatedHz = Math.min(
+              1100,
+              Math.max(80, 220 * (1 + pseudoSignal * 2.5)),
+            );
+            const meteringFrame: PitchFrame = {
+              frequencyHz: estimatedHz,
+              pitchName: frequencyToPitchName(estimatedHz),
+              centsOff: 0,
+              clarity: 0.5,
+              volumeDb: metering,
+            };
+            activeListener(estimatedHz, meteringFrame);
+            return;
+          }
+        }
+      } catch {
+        // Recorder may not be ready yet; fall through to the fallback frame.
+      }
+
       const fallbackHz = 220 + (Math.sin(Date.now() / 480) + 1) * 70;
       const fallbackFrame: PitchFrame = {
         frequencyHz: fallbackHz,
@@ -485,11 +444,20 @@ export async function startPitchListening(
         volumeDb: -45,
       };
       activeListener(fallbackHz, fallbackFrame);
-    }, 150);
+    }, 80);
 
     return true;
   } catch (error: unknown) {
     console.error('[PitchDetector] startPitchListening failed:', error);
+    if (activeRecording) {
+      await safeCleanupRecording(activeRecording);
+      activeRecording = null;
+    }
+    activeListener = null;
+    if (listeningTimer) {
+      clearInterval(listeningTimer);
+      listeningTimer = null;
+    }
     return false;
   }
 }

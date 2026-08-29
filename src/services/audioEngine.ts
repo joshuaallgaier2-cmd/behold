@@ -3,6 +3,44 @@ import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 let accompanimentInstance: AudioPlayer | null = null;
 let vocalInstance: AudioPlayer | null = null;
 
+function safePause(player: AudioPlayer | null): void {
+  if (!player) {
+    return;
+  }
+
+  try {
+    player.pause();
+  } catch (error) {
+    console.error('Error pausing audio player:', error);
+  }
+}
+
+function safeRemove(player: AudioPlayer | null): void {
+  if (!player) {
+    return;
+  }
+
+  safePause(player);
+
+  try {
+    player.remove();
+  } catch (error) {
+    console.error('Error releasing audio player:', error);
+  }
+}
+
+function safePlay(player: AudioPlayer | null): void {
+  if (!player) {
+    return;
+  }
+
+  try {
+    player.play();
+  } catch (error) {
+    console.error('Error starting audio playback:', error);
+  }
+}
+
 export async function initializeBeholdAudioConfiguration() {
   try {
     await setAudioModeAsync({
@@ -50,20 +88,24 @@ export async function playTracks(accompUri: string, vocalUri: string) {
       accompanimentInstance = createAudioPlayer(null);
       accompanimentInstance.shouldCorrectPitch = true;
     }
-    // Use replace to load the new source
-    accompanimentInstance.replace(accompUri);
-    accompanimentInstance.volume = 1.0; // Set default volume, can be adjusted later
-
     if (!vocalInstance) {
       vocalInstance = createAudioPlayer(null);
-      vocalInstance.shouldCorrectPitch = false; // Typically don't correct pitch for vocals
+      vocalInstance.shouldCorrectPitch = false;
     }
+
+    if (!accompanimentInstance || !vocalInstance) {
+      console.error('Audio players were not initialized; skipping playback.');
+      return;
+    }
+
+    accompanimentInstance.replace(accompUri);
+    accompanimentInstance.volume = 1.0;
     vocalInstance.replace(vocalUri);
-    vocalInstance.volume = 1.0; // Set default volume
+    vocalInstance.volume = 1.0;
 
     // Play both simultaneously from the beginning
-    accompanimentInstance.play();
-    vocalInstance.play();
+    safePlay(accompanimentInstance);
+    safePlay(vocalInstance);
     console.log('Both tracks started playing.');
 
   } catch (error) {
@@ -75,12 +117,8 @@ export async function playTracks(accompUri: string, vocalUri: string) {
 
 export async function pause() {
   try {
-    if (accompanimentInstance) {
-      accompanimentInstance.pause();
-    }
-    if (vocalInstance) {
-      vocalInstance.pause();
-    }
+    safePause(accompanimentInstance);
+    safePause(vocalInstance);
     console.log('Playback paused.');
   } catch (error) {
     console.error('Error pausing tracks:', error);
@@ -88,17 +126,14 @@ export async function pause() {
 }
 
 export async function stop() {
+  const accompaniment = accompanimentInstance;
+  const vocal = vocalInstance;
+  accompanimentInstance = null;
+  vocalInstance = null;
+
   try {
-    if (accompanimentInstance) {
-      accompanimentInstance.pause(); // Pause before stopping/removing
-      accompanimentInstance.remove();
-      accompanimentInstance = null;
-    }
-    if (vocalInstance) {
-      vocalInstance.pause(); // Pause before stopping/removing
-      vocalInstance.remove();
-      vocalInstance = null;
-    }
+    safeRemove(accompaniment);
+    safeRemove(vocal);
     console.log('Playback stopped and resources unloaded.');
   } catch (error) {
     console.error('Error stopping tracks:', error);
@@ -134,13 +169,15 @@ export const startSyncedDualTracks = playTracks;
 export const terminateAudioSession = stop;
 
 export const setVocalTrackMuteState = async (muted: boolean) => {
-  if (vocalInstance) {
-    // Assuming expo-audio's AudioPlayer has an setIsMutedAsync or similar, or use volume = 0
-    // Based on investigation, expo-audio doesn't directly expose `setIsMutedAsync` on AudioPlayer.
-    // We will use volume manipulation instead.
-    if (vocalInstance) {
-      vocalInstance.volume = muted ? 0 : 1.0; // Set volume to 0 if muted, else to 1.0
-    }
+  if (!vocalInstance) {
+    return;
+  }
+
+  try {
+    vocalInstance.muted = muted;
+    vocalInstance.volume = muted ? 0 : 1.0;
+  } catch (error) {
+    console.error('Error updating vocal mute state:', error);
   }
 };
 

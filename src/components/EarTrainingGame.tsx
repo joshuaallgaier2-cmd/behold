@@ -44,7 +44,7 @@ interface PitchDetectionResult {
 const pitchService = {
   /** Plays a short reference tone at the given frequency (Hz). */
   async playGuideTone(frequency: number, durationMs: number = 900): Promise<void> {
-    // e.g. bridge to expo-av / react-native-sound oscillator synth
+    // e.g. bridge to expo-audio / react-native-sound oscillator synth
     console.log(`[guideSynth] playing ${frequency.toFixed(2)}Hz for ${durationMs}ms`);
     return new Promise((resolve) => setTimeout(resolve, durationMs));
   },
