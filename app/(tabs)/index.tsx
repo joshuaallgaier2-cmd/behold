@@ -42,10 +42,11 @@ export default function DashboardScreen() {
 
     return LDS_MUSIC_DATABASE.filter((song) => {
       const matchesTab = song.category === activeTab;
+      const bookStr = song.book || song.sourceBook || '';
       const matchesSearch =
         song.title.toLowerCase().includes(query) ||
         song.number.toString().includes(query) ||
-        song.sourceBook.toLowerCase().includes(query);
+        bookStr.toLowerCase().includes(query);
       return matchesTab && matchesSearch;
     });
   }, [activeTab, searchQuery]);

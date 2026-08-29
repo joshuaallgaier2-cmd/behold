@@ -181,6 +181,20 @@ export const setVocalTrackMuteState = async (muted: boolean) => {
   }
 };
 
+export async function setPlaybackRate(rate: number) {
+  try {
+    if (accompanimentInstance) {
+      accompanimentInstance.playbackRate = rate;
+    }
+    if (vocalInstance) {
+      vocalInstance.playbackRate = rate;
+    }
+    console.log(`Playback rate set to ${rate}x`);
+  } catch (error) {
+    console.error('Error setting playback rate:', error);
+  }
+}
+
 // Export as an object named audioEngine for compatibility with existing components
 export const audioEngine = {
   initializeBeholdAudioConfiguration,
@@ -189,6 +203,7 @@ export const audioEngine = {
   startSyncedDualTracks,
   pause,
   stop,
+  setPlaybackRate,
   terminateAudioSession,
   getCurrentPosition,
   safelyTeardownActiveAudioPlayback,

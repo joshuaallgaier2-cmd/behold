@@ -81,9 +81,24 @@ export interface Song {
   category: 'hymn' | 'children' | 'youth';
 
   /**
-   * Source hymnbook or music collection.
+   * Source hymnbook or music collection (e.g. "Hymns of the Church of Jesus Christ of Latter-day Saints", "Children's Songbook").
    */
-  sourceBook: string;
+  book: string;
+
+  /**
+   * Backward-compatible source hymnbook or music collection.
+   */
+  sourceBook?: string;
+
+  /**
+   * Peak accuracy percentage score (0 to 100).
+   */
+  bestAccuracy?: number;
+
+  /**
+   * List of related scripture references (e.g. ["Moroni 6:6", "Mosiah 15:7–9"]).
+   */
+  scriptureReferences?: string[];
 
   /**
    * Optional audio accompaniment URL.
@@ -99,6 +114,16 @@ export interface Song {
    * Ordered collection of target notes for interactive playback.
    */
   targetNotes: TargetNote[];
+
+  /**
+   * Key signature of the song (e.g. 'C', 'G', 'D', 'F', 'Bb', 'Eb', etc.).
+   */
+  keySignature?: string;
+
+  /**
+   * Time signature of the song (e.g. '4/4', '3/4', '6/8', etc.).
+   */
+  timeSignature?: string;
 
   /**
    * Playback tempo in beats per minute.

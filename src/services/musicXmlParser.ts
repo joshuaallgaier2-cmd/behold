@@ -246,12 +246,24 @@ export async function parseMusicXmlToSong(
 
   const targetNotes = normalizeXPositions(draftNotes, measures.length);
 
+  const FIFTHS_MAP: Record<number, string> = {
+    0: 'C', 1: 'G', 2: 'D', 3: 'A', 4: 'E', 5: 'B', 6: 'F#', 7: 'C#',
+    '-1': 'F', '-2': 'Bb', '-3': 'Eb', '-4': 'Ab', '-5': 'Db', '-6': 'Gb', '-7': 'Cb',
+  };
+  const resolvedKey = songMetadata.keySignature ?? FIFTHS_MAP[header.keyFifths] ?? 'C';
+  const resolvedTime = songMetadata.timeSignature ?? `${header.beats}/${header.beatType}`;
+
   const song: Song = {
     id: songMetadata.id ?? generateSongId(songMetadata),
     number: songMetadata.number ?? 0,
     title: songMetadata.title ?? 'Untitled Song',
     category: songMetadata.category ?? DEFAULT_CATEGORY,
-    sourceBook: songMetadata.sourceBook ?? DEFAULT_SOURCE_BOOK,
+    book: songMetadata.book ?? songMetadata.sourceBook ?? DEFAULT_SOURCE_BOOK,
+    sourceBook: songMetadata.sourceBook ?? songMetadata.book ?? DEFAULT_SOURCE_BOOK,
+    bestAccuracy: songMetadata.bestAccuracy ?? 0,
+    scriptureReferences: songMetadata.scriptureReferences ?? [],
+    keySignature: resolvedKey,
+    timeSignature: resolvedTime,
     audioUrl: songMetadata.audioUrl,
     pageKeys: songMetadata.pageKeys ?? [],
     targetNotes,
@@ -511,7 +523,10 @@ function buildFallbackSong(songMetadata: Partial<Song>, reason: string): Song {
     number: songMetadata.number ?? 0,
     title: songMetadata.title ?? 'Untitled Song',
     category: songMetadata.category ?? DEFAULT_CATEGORY,
-    sourceBook: songMetadata.sourceBook ?? DEFAULT_SOURCE_BOOK,
+    book: songMetadata.book ?? songMetadata.sourceBook ?? DEFAULT_SOURCE_BOOK,
+    sourceBook: songMetadata.sourceBook ?? songMetadata.book ?? DEFAULT_SOURCE_BOOK,
+    bestAccuracy: songMetadata.bestAccuracy ?? 0,
+    scriptureReferences: songMetadata.scriptureReferences ?? [],
     audioUrl: songMetadata.audioUrl,
     pageKeys: songMetadata.pageKeys ?? [],
     targetNotes: [],
