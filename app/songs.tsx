@@ -1,3 +1,4 @@
+import HymnViewerModal from '@/src/components/HymnViewerModal';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -10,19 +11,20 @@ export default function SongsScreen() {
   const { colors } = useBeholdTheme();
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<SongCategory>('hymn');
+  const [selectedHymnId, setSelectedHymnId] = useState<string | null>(null);
 
   const categories: { id: SongCategory; label: string }[] = [
     { id: 'hymn', label: 'Hymns' },
     { id: 'children', label: "Children's Songbook" },
-    { id: 'youth', label: 'Youth Album' }
+    { id: 'youth', label: 'Youth Album' },
   ];
 
-  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter(song => song.category === activeCategory);
+  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter((song) => song.category === activeCategory);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.title, { color: colors.text }]}>Music Catalog</Text>
-      
+
       <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id;
@@ -30,15 +32,14 @@ export default function SongsScreen() {
             <TouchableOpacity
               key={cat.id}
               onPress={() => setActiveCategory(cat.id)}
-              style={[
-                styles.tabItem,
-                isActive && { borderBottomColor: colors.accent }
-              ]}
+              style={[styles.tabItem, isActive && { borderBottomColor: colors.accent }]}
             >
-              <Text style={[
-                styles.tabText, 
-                { color: isActive ? colors.accent : colors.text, fontWeight: isActive ? '700' : '500' }
-              ]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: isActive ? colors.accent : colors.text, fontWeight: isActive ? '700' : '500' },
+                ]}
+              >
                 {cat.label}
               </Text>
             </TouchableOpacity>
@@ -53,6 +54,7 @@ export default function SongsScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.songCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+            activeOpacity={0.8}
             onPress={() => router.push({ pathname: '/song-details', params: { id: item.id } })}
           >
             <View style={[styles.badge, { backgroundColor: colors.accent }]}>
@@ -64,6 +66,12 @@ export default function SongsScreen() {
             </View>
           </TouchableOpacity>
         )}
+      />
+
+      <HymnViewerModal
+        hymnIdOrNumber={selectedHymnId}
+        isOpen={selectedHymnId !== null}
+        onClose={() => setSelectedHymnId(null)}
       />
     </View>
   );
@@ -131,5 +139,17 @@ const styles = StyleSheet.create({
   songSource: {
     fontSize: 13,
     opacity: 0.6,
+  },
+  detailsBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#262626',
+    marginLeft: 8,
+  },
+  detailsBtnText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

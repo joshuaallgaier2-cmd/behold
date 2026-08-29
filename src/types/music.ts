@@ -185,3 +185,56 @@ export interface PerformanceSummary {
    */
   longestStreak: number;
 }
+
+/**
+ * Maps a single syllable or word in the lyrics to an exact measure and beat.
+ */
+export interface LyricBeat {
+  /**
+   * Zero-based measure index (or 1-based, consistent within dataset).
+   */
+  measure: number;
+
+  /**
+   * 1-based beat position within the measure (e.g., 1, 1.5, 2, 3).
+   */
+  beat: number;
+
+  /**
+   * Syllable or word text (e.g., "While", "of", "em-").
+   */
+  text: string;
+
+  /**
+   * Optional beat duration of the syllable.
+   */
+  durationBeats?: number;
+}
+
+/**
+ * Represents a single note rendered on a specific staff (Treble or Bass).
+ */
+export interface ClefNote {
+  id: string;
+  pitch: string; // Scientific pitch e.g. "E4", "C3", "G4"
+  pitchName?: string;
+  clef: 'treble' | 'bass';
+  measure: number; // 0-based measure index
+  beat: number; // 1-based beat index within measure (e.g. 1, 2, 2.5, 3)
+  durationBeats: number; // Duration in beats (e.g. 1 = quarter, 0.5 = eighth, 2 = half, 3 = dotted half)
+  frequencyHz?: number;
+  accidental?: '#' | 'b' | 'n';
+  tie?: boolean;
+  label?: string;
+}
+
+/**
+ * Rich dual-clef sheet music representation with synchronized lyrics and audio.
+ */
+export interface GrandStaffHymn extends Song {
+  beatsPerMeasure: number;
+  totalMeasures: number;
+  trebleNotes: ClefNote[];
+  bassNotes: ClefNote[];
+  lyrics: LyricBeat[];
+}

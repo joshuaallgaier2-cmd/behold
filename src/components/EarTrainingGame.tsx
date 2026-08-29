@@ -3,12 +3,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     Animated,
     Easing,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types

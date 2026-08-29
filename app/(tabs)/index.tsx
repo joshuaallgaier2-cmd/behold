@@ -1,3 +1,4 @@
+import HymnViewerModal from '@/src/components/HymnViewerModal';
 import { LDS_MUSIC_DATABASE } from '@/src/data/musicData';
 import { audioEngine } from '@/src/services/audioEngine';
 import type { Song } from '@/src/types/music';
@@ -6,7 +7,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AppState,
   FlatList,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function DashboardScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'hymn' | 'children' | 'youth'>('hymn');
+  const [selectedHymnId, setSelectedHymnId] = useState<string | null>(null);
 
   useEffect(() => {
     audioEngine.initializeBeholdAudioConfiguration();
@@ -55,17 +57,12 @@ export default function DashboardScreen() {
     const hasSheetMusic = (item.pageKeys ?? []).length > 0;
     const hasTargetNotes = (item.targetNotes ?? []).length > 0;
 
-    // TODO: In a full implementation, fetch performance scores from AsyncStorage or a database
-    // For now, show the badge infrastructure but no actual badges (performance scores are always null in this version)
-
     return (
       <TouchableOpacity
         style={[styles.songCard, (!hasSheetMusic || !hasTargetNotes) && styles.songCardPending]}
+        activeOpacity={0.8}
         onPress={() => {
-          router.push({
-            pathname: '/song-details',
-            params: { id: item.id },
-          });
+          setSelectedHymnId(item.id);
         }}
       >
         <View style={styles.songNumberBadge}>
@@ -77,16 +74,28 @@ export default function DashboardScreen() {
           <Text style={styles.songSource}>{item.sourceBook}</Text>
 
           <View style={styles.badgeRow}>
+            <View style={[styles.assetBadge, styles.fullscreenBadge]}>
+              <Text style={styles.fullscreenBadgeText}>⚡ Interactive Fullscreen</Text>
+            </View>
             <View style={[styles.assetBadge, hasSheetMusic ? styles.assetBadgeActive : styles.assetBadgeMuted]}>
-              <Text style={styles.assetBadgeText}>{hasSheetMusic ? 'Sheet' : 'No sheet'}</Text>
+              <Text style={styles.assetBadgeText}>{hasSheetMusic ? 'Dual-Clef' : 'No sheet'}</Text>
             </View>
-            <View style={[styles.assetBadge, hasTargetNotes ? styles.assetBadgeActive : styles.assetBadgeMuted]}>
-              <Text style={styles.assetBadgeText}>{hasTargetNotes ? 'Notes' : 'No notes'}</Text>
-            </View>
-
-            {/* Performance badge infrastructure ready - will display when score persistence is implemented */}
           </View>
         </View>
+
+        <TouchableOpacity
+          style={styles.detailsBtn}
+          onPress={(e) => {
+            e.stopPropagation();
+            router.push({
+              pathname: '/song-details',
+              params: { id: item.id },
+            });
+          }}
+          accessibilityLabel="Song Details"
+        >
+          <Text style={styles.detailsBtnText}>Details ›</Text>
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -126,6 +135,13 @@ export default function DashboardScreen() {
         numColumns={isLargeScreenDisplay ? 3 : 1}
         key={isLargeScreenDisplay ? 'grid-3-col' : 'list-1-col'}
       />
+
+      {/* Fullscreen Interactive Sheet Music Modal */}
+      <HymnViewerModal
+        hymnIdOrNumber={selectedHymnId}
+        isOpen={selectedHymnId !== null}
+        onClose={() => setSelectedHymnId(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -152,7 +168,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabButtonActive: {
-    borderBottomColor: '#FFD700',
+    borderBottomColor: '#38BDF8',
   },
   tabButtonText: {
     color: '#888',
@@ -183,6 +199,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    borderWidth: 1,
+    borderColor: '#2A2E39',
   },
   songCardPending: {
     opacity: 0.75,
@@ -191,7 +209,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   songNumberBadge: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#38BDF8',
     width: 42,
     height: 42,
     borderRadius: 21,
@@ -200,7 +218,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   songNumberText: {
-    color: '#000',
+    color: '#0F172A',
     fontWeight: '900',
     fontSize: 16,
   },
@@ -227,6 +245,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
+  fullscreenBadge: {
+    backgroundColor: '#0369A1',
+  },
+  fullscreenBadgeText: {
+    color: '#E0F2FE',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   assetBadgeActive: {
     backgroundColor: '#163f2d',
   },
@@ -239,19 +266,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4,
   },
-  // Performance badge (shown when song has been completed with a score)
-  performanceBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: '#FFD700',
-    borderWidth: 1.5,
-    borderColor: '#FFA500',
+  detailsBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#262626',
+    marginLeft: 8,
   },
-  performanceBadgeText: {
-    color: '#1a1a1a',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+  detailsBtnText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

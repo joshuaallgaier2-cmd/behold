@@ -181,17 +181,34 @@ export const setVocalTrackMuteState = async (muted: boolean) => {
   }
 };
 
+let lastPlaybackRateError: string | null = null;
+
+function applyPlaybackRate(player: AudioPlayer | null, rate: number): void {
+  if (!player) {
+    return;
+  }
+
+  try {
+    player.setPlaybackRate(rate);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (lastPlaybackRateError !== message) {
+      lastPlaybackRateError = message;
+      console.error('Error setting playback rate:', error);
+    }
+  }
+}
+
 export async function setPlaybackRate(rate: number) {
   try {
-    if (accompanimentInstance) {
-      accompanimentInstance.playbackRate = rate;
-    }
-    if (vocalInstance) {
-      vocalInstance.playbackRate = rate;
-    }
-    console.log(`Playback rate set to ${rate}x`);
+    applyPlaybackRate(accompanimentInstance, rate);
+    applyPlaybackRate(vocalInstance, rate);
   } catch (error) {
-    console.error('Error setting playback rate:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (lastPlaybackRateError !== message) {
+      lastPlaybackRateError = message;
+      console.error('Error setting playback rate:', error);
+    }
   }
 }
 
