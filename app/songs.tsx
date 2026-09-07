@@ -1,4 +1,5 @@
 import HymnViewerModal from '@/src/components/HymnViewerModal';
+import TimeSignatureMark from '@/src/components/TimeSignatureMark';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -63,6 +64,9 @@ export default function SongsScreen() {
             <View style={styles.songInfo}>
               <Text style={[styles.songTitle, { color: colors.text }]}>{item.title}</Text>
               <Text style={[styles.songSource, { color: colors.text }]}>{item.sourceBook}</Text>
+            </View>
+            <View style={[styles.timeSigWrap, { borderColor: colors.border }]}>
+              <TimeSignatureMark timeSignature={item.timeSignature} color={colors.text} size={12} />
             </View>
           </TouchableOpacity>
         )}
@@ -139,6 +143,13 @@ const styles = StyleSheet.create({
   songSource: {
     fontSize: 13,
     opacity: 0.6,
+  },
+  timeSigWrap: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
   },
   detailsBtn: {
     paddingHorizontal: 12,

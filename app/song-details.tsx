@@ -1,5 +1,6 @@
 import { useBeholdTheme } from '@/hooks/use-behold-theme';
 import SvgSheetCanvas from '@/src/components/SvgSheetCanvas';
+import TimeSignatureMark from '@/src/components/TimeSignatureMark';
 import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
 import { usePracticeEngine } from '@/src/hooks/usePracticeEngine';
 import { Ionicons } from '@expo/vector-icons';
@@ -135,6 +136,11 @@ export default function SongDetailsScreen() {
         </View>
 
         <View style={styles.metadataRow}>
+          <Text style={[styles.metadataLabel, { color: colors.text }]}>Time:</Text>
+          <TimeSignatureMark timeSignature={song.timeSignature} color={colors.text} size={16} />
+        </View>
+
+        <View style={styles.metadataRow}>
           <Text style={[styles.metadataLabel, { color: colors.text }]}>Tempo:</Text>
           <Text style={[styles.metadataValue, { color: colors.text }]}>{song.tempoBpm} BPM</Text>
         </View>
@@ -211,6 +217,7 @@ const styles = StyleSheet.create({
   metadataRow: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 8,
     gap: 8,
   },

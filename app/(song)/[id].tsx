@@ -26,6 +26,8 @@ export default function SongScreen() {
       <Text style={styles.title}>{currentSong.title}</Text>
       <Text style={styles.subtitle}>Number: {currentSong.number}</Text>
       <Text style={styles.detail}>Category: {currentSong.category}</Text>
+      <Text style={styles.detail}>Key: {currentSong.keySignature || 'C'}</Text>
+      <Text style={styles.detail}>Time: {currentSong.timeSignature || '4/4'}</Text>
       <Text style={styles.detail}>Tempo: {currentSong.tempo}</Text>
     </View>
   );

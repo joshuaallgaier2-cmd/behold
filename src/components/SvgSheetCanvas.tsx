@@ -240,7 +240,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
   width,
   height,
   keySignature = 'C',
-  timeSignature = '3/4',
+  timeSignature = '4/4',
   tempoBpm = 76,
   isPlaying = false,
   tempoMultiplier = 1.0,
@@ -262,7 +262,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
   const accidentalCount = keyInfo.count;
   const accidentalGlyph = keyInfo.type === '#' ? '♯' : '♭';
   const keyEndX = CLEF_X + 46 + accidentalCount * 16;
-  const [beats, beatUnit] = (timeSignature.includes('/') ? timeSignature : '3/4').split('/');
+  const [beats, beatUnit] = (timeSignature.includes('/') ? timeSignature : '4/4').split('/');
 
   const dynamicNoteStartX = Math.max(195, keyEndX + 52);
 

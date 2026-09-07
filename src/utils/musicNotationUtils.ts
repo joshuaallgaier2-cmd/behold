@@ -245,6 +245,15 @@ export function getKeySignatureGlyphs(
   return { treble, bass };
 }
 
+export function parseTimeSignature(timeSignature?: string): { beats: string; beatUnit: string } {
+  const raw = timeSignature?.includes('/') ? timeSignature : '4/4';
+  const [beats, beatUnit] = raw.split('/');
+  return {
+    beats: beats || '4',
+    beatUnit: beatUnit || '4',
+  };
+}
+
 /**
  * Calculates the exact horizontal X-coordinate for a specific measure beat.
  * Guaranteed to align treble notes, bass notes, and lyrics on the exact same vertical grid.

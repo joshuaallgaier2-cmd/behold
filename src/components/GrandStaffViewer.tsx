@@ -26,6 +26,7 @@ import {
   getPitchStaffY,
   getStemGeometry,
   parsePitch,
+  parseTimeSignature,
 } from '../utils/musicNotationUtils';
 
 export interface GrandStaffViewerProps {
@@ -118,6 +119,8 @@ export default function GrandStaffViewer({
       BASS_BOTTOM_Y,
     );
   }, [hymn.keySignature]);
+
+  const { beats: timeBeats, beatUnit: timeBeatUnit } = parseTimeSignature(hymn.timeSignature);
 
   // Total width of clef header before measure 0 starts
   const headerWidth = useMemo(() => {
@@ -284,7 +287,7 @@ export default function GrandStaffViewer({
               fontWeight="bold"
               textAnchor="middle"
             >
-              {hymn.timeSignature?.charAt(0) ?? '4'}
+              {timeBeats}
             </SvgText>
             <SvgText
               x={headerWidth - 12}
@@ -294,7 +297,7 @@ export default function GrandStaffViewer({
               fontWeight="bold"
               textAnchor="middle"
             >
-              {hymn.timeSignature?.charAt(2) ?? '4'}
+              {timeBeatUnit}
             </SvgText>
 
             <SvgText
@@ -305,7 +308,7 @@ export default function GrandStaffViewer({
               fontWeight="bold"
               textAnchor="middle"
             >
-              {hymn.timeSignature?.charAt(0) ?? '4'}
+              {timeBeats}
             </SvgText>
             <SvgText
               x={headerWidth - 12}
@@ -315,7 +318,7 @@ export default function GrandStaffViewer({
               fontWeight="bold"
               textAnchor="middle"
             >
-              {hymn.timeSignature?.charAt(2) ?? '4'}
+              {timeBeatUnit}
             </SvgText>
           </G>
 

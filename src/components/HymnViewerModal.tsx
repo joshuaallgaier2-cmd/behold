@@ -15,6 +15,7 @@ import { getGrandStaffHymn, GRAND_STAFF_HYMNS } from '../data/hymnData';
 import { AudioPlaybackState, grandStaffAudio } from '../services/grandStaffAudio';
 import type { ClefNote, GrandStaffHymn } from '../types/music';
 import GrandStaffViewer from './GrandStaffViewer';
+import TimeSignatureMark from './TimeSignatureMark';
 
 export interface HymnViewerModalProps {
   hymnIdOrNumber: string | number | null;
@@ -208,6 +209,9 @@ export default function HymnViewerModal({
             <View style={styles.hymnNumberBadge}>
               <Text style={styles.hymnNumberText}>#{hymn.number}</Text>
             </View>
+            <View style={styles.timeSigBadge}>
+              <TimeSignatureMark timeSignature={hymn.timeSignature} color="#F8FAFC" size={14} />
+            </View>
             <View style={styles.hymnMetaInfo}>
               <Text style={styles.hymnTitle} numberOfLines={1}>
                 {hymn.title}
@@ -396,6 +400,15 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontWeight: '900',
     fontSize: 15,
+  },
+  timeSigBadge: {
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 12,
   },
   hymnMetaInfo: {
     flex: 1,

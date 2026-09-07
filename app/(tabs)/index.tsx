@@ -1,4 +1,5 @@
 import HymnViewerModal from '@/src/components/HymnViewerModal';
+import TimeSignatureMark from '@/src/components/TimeSignatureMark';
 import { LDS_MUSIC_DATABASE } from '@/src/data/musicData';
 import { audioEngine } from '@/src/services/audioEngine';
 import type { Song } from '@/src/types/music';
@@ -74,6 +75,9 @@ export default function DashboardScreen() {
           <Text style={styles.songSource}>{item.sourceBook}</Text>
 
           <View style={styles.badgeRow}>
+            <View style={styles.timeSigBadge}>
+              <TimeSignatureMark timeSignature={item.timeSignature} color="#E0F2FE" size={11} />
+            </View>
             <View style={[styles.assetBadge, styles.fullscreenBadge]}>
               <Text style={styles.fullscreenBadgeText}>⚡ Interactive Fullscreen</Text>
             </View>
@@ -237,8 +241,17 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 8,
     gap: 8,
+  },
+  timeSigBadge: {
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   assetBadge: {
     paddingHorizontal: 8,
