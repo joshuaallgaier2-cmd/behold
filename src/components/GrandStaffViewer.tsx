@@ -20,11 +20,13 @@ import Svg, {
 } from 'react-native-svg';
 import type { ClefNote, GrandStaffHymn } from '../types/music';
 import {
+  BRAVURA_GLYPHS,
   getBeatX,
   getKeySignatureGlyphs,
   getLedgerLineYs,
   getPitchStaffY,
   getStemGeometry,
+  getTimeSigGlyphPath,
   parsePitch,
   parseTimeSignature,
 } from '../utils/musicNotationUtils';
@@ -82,18 +84,6 @@ const GRAND_STAFF_BRACE_PATH = (topY: number, bottomY: number): string => {
     `C 9 ${midY - height * 0.1}, 13 ${topY + height * 0.15}, 16 ${topY} Z`
   );
 };
-
-/**
- * Treble Clef Path (G-Clef)
- */
-const TREBLE_CLEF_SVG =
-  'M 12 36 C 14 30 22 28 22 20 C 22 14 16 10 11 15 C 7 19 8 26 13 28 C 17 30 20 27 19 23 C 18 20 15 20 14 22 C 13 23 14 25 15 25 C 16 25 17 24 16 23 C 15 22 13 23 14 25 C 10 24 8 18 12 13 C 16 8 25 11 25 21 C 25 29 17 33 13 41 C 11 45 10 50 11 55 C 12 60 16 63 20 60 C 24 57 24 50 20 46 C 16 43 12 45 12 48 C 12 51 15 52 16 50 C 17 48 15 46 14 47 C 13 48 14 50 16 49 C 18 51 18 57 14 58 C 10 59 7 53 7 47 C 7 40 10 34 12 36 Z';
-
-/**
- * Bass Clef Path (F-Clef)
- */
-const BASS_CLEF_SVG =
-  'M 6 15 C 6 8 16 4 23 9 C 29 13 30 21 27 27 C 24 33 17 37 10 38 C 9 38 8 36 9 35 C 13 33 22 29 23 21 C 24 15 19 10 13 11 C 9 12 6 16 6 20 C 6 23 9 25 12 24 C 14 23 15 20 14 18 C 13 16 11 16 10 17 C 9 18 10 20 11 20 C 11 20 12 19 12 18 C 11 17 10 18 10 19 C 8 20 6 18 6 15 Z';
 
 export default function GrandStaffViewer({
   hymn,
@@ -238,16 +228,14 @@ export default function GrandStaffViewer({
 
           {/* ── 3. Clefs Header (Treble, Bass, Key Signatures, Time Sig) ────── */}
           <G id="clef-and-time-header">
-            {/* Treble Clef Symbol */}
-            <G transform={`translate(${BRACE_WIDTH + 10}, ${TREBLE_TOP_Y - 14}) scale(0.9)`}>
-              <Path d={TREBLE_CLEF_SVG} fill="#F8FAFC" />
+            {/* Treble Clef Symbol (SMuFL Bravura G-Clef aligned to G4-line) */}
+            <G transform={`translate(${BRACE_WIDTH + 8}, ${TREBLE_TOP_Y + 3 * LINE_SPACING}) scale(0.048)`}>
+              <Path d={BRAVURA_GLYPHS.gClef.path} fill="#F8FAFC" />
             </G>
 
-            {/* Bass Clef Symbol */}
-            <G transform={`translate(${BRACE_WIDTH + 12}, ${BASS_TOP_Y}) scale(0.95)`}>
-              <Path d={BASS_CLEF_SVG} fill="#F8FAFC" />
-              <Circle cx={36} cy={10} r={2.5} fill="#F8FAFC" />
-              <Circle cx={36} cy={22} r={2.5} fill="#F8FAFC" />
+            {/* Bass Clef Symbol (SMuFL Bravura F-Clef aligned to F3-line with dots in spaces 3 & 4) */}
+            <G transform={`translate(${BRACE_WIDTH + 8}, ${BASS_TOP_Y + LINE_SPACING}) scale(0.048)`}>
+              <Path d={BRAVURA_GLYPHS.fClef.path} fill="#F8FAFC" />
             </G>
 
             {/* Key Signature Accidentals */}
@@ -278,48 +266,21 @@ export default function GrandStaffViewer({
               </SvgText>
             ))}
 
-            {/* Time Signature Numbers */}
-            <SvgText
-              x={headerWidth - 12}
-              y={TREBLE_TOP_Y + 18}
-              fill="#F8FAFC"
-              fontSize={18}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {timeBeats}
-            </SvgText>
-            <SvgText
-              x={headerWidth - 12}
-              y={TREBLE_TOP_Y + 40}
-              fill="#F8FAFC"
-              fontSize={18}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {timeBeatUnit}
-            </SvgText>
+            {/* Time Signature on Treble Staff (SMuFL Engraved Numerals) */}
+            <G transform={`translate(${headerWidth - 22}, ${TREBLE_TOP_Y + 2 * LINE_SPACING}) scale(0.048)`}>
+              <Path d={getTimeSigGlyphPath(timeBeats)} fill="#F8FAFC" />
+            </G>
+            <G transform={`translate(${headerWidth - 22}, ${TREBLE_BOTTOM_Y}) scale(0.048)`}>
+              <Path d={getTimeSigGlyphPath(timeBeatUnit)} fill="#F8FAFC" />
+            </G>
 
-            <SvgText
-              x={headerWidth - 12}
-              y={BASS_TOP_Y + 18}
-              fill="#F8FAFC"
-              fontSize={18}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {timeBeats}
-            </SvgText>
-            <SvgText
-              x={headerWidth - 12}
-              y={BASS_TOP_Y + 40}
-              fill="#F8FAFC"
-              fontSize={18}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {timeBeatUnit}
-            </SvgText>
+            {/* Time Signature on Bass Staff (SMuFL Engraved Numerals) */}
+            <G transform={`translate(${headerWidth - 22}, ${BASS_TOP_Y + 2 * LINE_SPACING}) scale(0.048)`}>
+              <Path d={getTimeSigGlyphPath(timeBeats)} fill="#F8FAFC" />
+            </G>
+            <G transform={`translate(${headerWidth - 22}, ${BASS_BOTTOM_Y}) scale(0.048)`}>
+              <Path d={getTimeSigGlyphPath(timeBeatUnit)} fill="#F8FAFC" />
+            </G>
           </G>
 
           {/* ── 4. Measures, Barlines, Notes, and Synchronized Lyrics ───────── */}

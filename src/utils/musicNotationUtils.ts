@@ -245,12 +245,46 @@ export function getKeySignatureGlyphs(
   return { treble, bass };
 }
 
+export * from './musicGlyphs';
+
 export function parseTimeSignature(timeSignature?: string): { beats: string; beatUnit: string } {
-  const raw = timeSignature?.includes('/') ? timeSignature : '4/4';
-  const [beats, beatUnit] = raw.split('/');
+  if (!timeSignature) {
+    return { beats: '4', beatUnit: '4' };
+  }
+  const str = String(timeSignature).trim();
+  if (str === 'C') return { beats: '4', beatUnit: '4' };
+  if (str === 'C|') return { beats: '2', beatUnit: '2' };
+  if (str.includes('/')) {
+    const [beats, beatUnit] = str.split('/');
+    return {
+      beats: beats.trim() || '4',
+      beatUnit: beatUnit.trim() || '4',
+    };
+  }
+  if (str.includes(':')) {
+    const [beats, beatUnit] = str.split(':');
+    return {
+      beats: beats.trim() || '4',
+      beatUnit: beatUnit.trim() || '4',
+    };
+  }
+  if (str.includes(' ')) {
+    const [beats, beatUnit] = str.split(/\s+/);
+    return {
+      beats: beats.trim() || '4',
+      beatUnit: beatUnit.trim() || '4',
+    };
+  }
+  // Handles shorthand notations like "34" -> 3/4, "44" -> 4/4, "68" -> 6/8, "24" -> 2/4, "22" -> 2/2
+  if (/^\d\d$/.test(str)) {
+    return {
+      beats: str[0],
+      beatUnit: str[1],
+    };
+  }
   return {
-    beats: beats || '4',
-    beatUnit: beatUnit || '4',
+    beats: '4',
+    beatUnit: '4',
   };
 }
 

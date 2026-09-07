@@ -1,21 +1,26 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Slot, usePathname, useRouter } from 'expo-router';
-import { Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LiquidGlassView } from '../../src/components/LiquidGlassView';
 import { ThemeProvider, useBeholdTheme } from '../../src/context/ThemeContext';
+import { heights, interaction, radius, spacing, typography, getElevation } from '../../src/theme/platformDesign';
+
+const isIOS = Platform.OS === 'ios';
+
+const NAV_ITEMS = [
+  { id: 'home', label: 'Home', route: '/' as const, icon: 'home' as const },
+  { id: 'songs', label: 'Songs', route: '/songs' as const, icon: 'musical-notes' as const },
+  { id: 'account', label: 'Account', route: '/account' as const, icon: 'person' as const },
+];
 
 function NavigationLayoutContent() {
   const { width, height } = useWindowDimensions();
   const { colors } = useBeholdTheme();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   const isLandscape = width > height;
-  const navItems = [
-    { id: 'home', label: 'Home', route: '/' as const },
-    { id: 'songs', label: 'Songs', route: '/songs' as const },
-    { id: 'account', label: 'Account', route: '/account' as const }
-  ];
 
   return (
     <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
@@ -24,22 +29,34 @@ function NavigationLayoutContent() {
           <LiquidGlassView style={styles.sidebar}>
             <Text style={[styles.brandText, { color: colors.accent }]}>BEHOLD</Text>
             <View style={styles.sidebarNavGroup}>
-              {navItems.map((item) => {
+              {NAV_ITEMS.map((item) => {
                 const isActive = pathname === item.route;
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={item.id}
                     onPress={() => router.push(item.route)}
-                    style={[
+                    android_ripple={
+                      interaction.useRipple
+                        ? { color: 'rgba(255,255,255,0.08)', borderless: false }
+                        : undefined
+                    }
+                    style={({ pressed }) => [
                       styles.sidebarNavItem,
-                      isActive && { backgroundColor: "rgba(255, 255, 255, 0.08)", borderRadius: 8 }
+                      isActive && { backgroundColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 8 },
+                      isIOS && pressed && { opacity: interaction.pressOpacity },
                     ]}
                   >
-                    <View style={[styles.activeIndicator, { backgroundColor: isActive ? colors.accent : "transparent" }]} />
-                    <Text style={[styles.navText, { color: colors.text, fontWeight: isActive ? "700" : "400" }]}>
+                    <View style={[styles.activeIndicator, { backgroundColor: isActive ? colors.accent : 'transparent' }]} />
+                    <Ionicons
+                      name={(isIOS ? `${item.icon}-outline` : `${item.icon}-sharp`) as any}
+                      size={20}
+                      color={isActive ? colors.accent : colors.onSurfaceVariant}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text style={[styles.navText, { color: colors.text, fontWeight: isActive ? '700' : '400' }]}>
                       {item.label}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </View>
@@ -53,23 +70,74 @@ function NavigationLayoutContent() {
           <View style={styles.mainContent}>
             <Slot />
           </View>
-          <LiquidGlassView style={styles.bottomTabBar}>
-            {navItems.map((item) => {
+          {/* Platform-Adaptive Bottom Navigation */}
+          <View
+            style={[
+              styles.bottomTabBar,
+              {
+                height: heights.bottomNav + (isIOS ? 15 : 0),
+                paddingBottom: isIOS ? 15 : 0,
+                backgroundColor: isIOS ? 'rgba(30, 30, 30, 0.95)' : colors.surfaceContainer,
+                borderTopWidth: isIOS ? 0.5 : 0,
+                borderTopColor: isIOS ? 'rgba(255,255,255,0.15)' : 'transparent',
+                ...getElevation(isIOS ? 0 : 2),
+              },
+            ]}
+          >
+            {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.route;
+              const iconName = (isIOS ? `${item.icon}-outline` : `${item.icon}-sharp`) as any;
+
               return (
-                <TouchableOpacity
+                <Pressable
                   key={item.id}
                   onPress={() => router.push(item.route)}
-                  style={styles.bottomTabItem}
+                  android_ripple={
+                    interaction.useRipple
+                      ? { color: `${colors.accent}20`, borderless: true, radius: 28 }
+                      : undefined
+                  }
+                  style={({ pressed }) => [
+                    styles.bottomTabItem,
+                    isIOS && pressed && { opacity: interaction.pressOpacity },
+                  ]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={item.label}
                 >
-                  <Text style={[styles.bottomNavText, { color: isActive ? colors.accent : colors.text, fontWeight: isActive ? "700" : "400" }]}>
+                  {/* MD3 Active Indicator Pill (Android only) */}
+                  {!isIOS && isActive && (
+                    <View style={[styles.md3ActivePill, { backgroundColor: `${colors.accent}30` }]} />
+                  )}
+                  <Ionicons
+                    name={isActive ? (item.icon as any) : iconName}
+                    size={isIOS ? 24 : 24}
+                    color={isActive ? colors.accent : colors.onSurfaceVariant}
+                  />
+                  <Text
+                    style={[
+                      isIOS ? styles.iosTabLabel : styles.md3TabLabel,
+                      {
+                        color: isActive ? colors.accent : colors.onSurfaceVariant,
+                        fontWeight: isActive ? '600' : '400',
+                      },
+                    ]}
+                  >
                     {item.label}
                   </Text>
-                  <View style={[styles.bottomActiveIndicator, { backgroundColor: isActive ? colors.accent : "transparent" }]} />
-                </TouchableOpacity>
+                  {/* iOS Bottom Active Dot */}
+                  {isIOS && (
+                    <View
+                      style={[
+                        styles.iosActiveDot,
+                        { backgroundColor: isActive ? colors.accent : 'transparent' },
+                      ]}
+                    />
+                  )}
+                </Pressable>
               );
             })}
-          </LiquidGlassView>
+          </View>
         </View>
       )}
     </View>
@@ -120,12 +188,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginVertical: 4,
+    overflow: 'hidden',
   },
   activeIndicator: {
     width: 4,
     height: 20,
     borderRadius: 2,
-    marginRight: 12,
+    marginRight: 8,
   },
   navText: {
     fontSize: 16,
@@ -134,25 +203,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomTabBar: {
-    height: 75,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 15 : 0,
   },
   bottomTabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: isIOS ? 4 : 12,
     flex: 1,
+    position: 'relative',
   },
-  bottomNavText: {
-    fontSize: 14,
-    marginBottom: 4,
+  // MD3: Active indicator pill behind the icon (Android)
+  md3ActivePill: {
+    position: 'absolute',
+    top: isIOS ? 4 : 8,
+    width: 64,
+    height: 32,
+    borderRadius: 16,
+    zIndex: -1,
   },
-  bottomActiveIndicator: {
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
-  }
+  // iOS: Small label below icon
+  iosTabLabel: {
+    fontSize: 10,
+    marginTop: 2,
+    letterSpacing: -0.24,
+  },
+  // MD3: Label below icon (Android)
+  md3TabLabel: {
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+    letterSpacing: 0.5,
+  },
+  // iOS: Active dot indicator below label
+  iosActiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 2,
+  },
 });

@@ -1,37 +1,63 @@
-import { useBeholdTheme } from '@/hooks/use-behold-theme';
+import AdaptiveButton from '@/src/components/adaptive/AdaptiveButton';
+import AdaptiveCard from '@/src/components/adaptive/AdaptiveCard';
+import AdaptiveChip from '@/src/components/adaptive/AdaptiveChip';
+import AdaptiveHeader from '@/src/components/adaptive/AdaptiveHeader';
+import HymnViewerModal from '@/src/components/HymnViewerModal';
 import SvgSheetCanvas from '@/src/components/SvgSheetCanvas';
 import TimeSignatureMark from '@/src/components/TimeSignatureMark';
+import { useBeholdTheme } from '@/src/context/ThemeContext';
 import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
 import { usePracticeEngine } from '@/src/hooks/usePracticeEngine';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Dimensions,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getElevation, heights, interaction, radius, spacing, typography } from '@/src/theme/platformDesign';
 
+const isIOS = Platform.OS === 'ios';
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
+
+const TEMPO_SPEEDS = [
+  { label: '0.75x', value: 0.75 },
+  { label: '1.0x', value: 1.0 },
+  { label: '1.25x', value: 1.25 },
+  { label: '1.5x', value: 1.5 },
+];
 
 export default function SongDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { colors } = useBeholdTheme();
-  const [viewMode, setViewMode] = useState<'details' | 'viewer'>('details');
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
-  const [tempoMultiplier, setTempoMultiplier] = useState(1);
+  const [tempoMultiplier, setTempoMultiplier] = useState(1.0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const song = useMemo(() => 
-    INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id) || INTERACTIVE_MUSIC_DATABASE[0],
-    [id]
+  const song = useMemo(
+    () => INTERACTIVE_MUSIC_DATABASE.find((s) => s.id === id) || INTERACTIVE_MUSIC_DATABASE[0],
+    [id],
   );
 
+  const targetNotes = useMemo(() => song?.targetNotes ?? [], [song]);
+
   const totalDurationMs = useMemo(() => {
-    const lastNote = song.targetNotes[song.targetNotes.length - 1];
-    return Math.max(1, (lastNote?.timestampMs ?? 0) + (lastNote?.durationMs ?? 0));
-  }, [song]);
+    if (!targetNotes.length) return 10000;
+    const lastNote = targetNotes[targetNotes.length - 1];
+    return Math.max(1000, (lastNote?.timestampMs ?? 0) + (lastNote?.durationMs ?? 1000));
+  }, [targetNotes]);
 
   const { adjustedTimeMs } = usePracticeEngine(
-    song.targetNotes,
+    targetNotes,
     {},
     currentTimeMs,
     isPlaying,
@@ -49,7 +75,11 @@ export default function SongDetailsScreen() {
     const interval = setInterval(() => {
       setCurrentTimeMs((timeMs) => {
         const nextTimeMs = timeMs + 50 * tempoMultiplier;
-        return nextTimeMs >= totalDurationMs ? 0 : nextTimeMs;
+        if (nextTimeMs >= totalDurationMs) {
+          setIsPlaying(false);
+          return 0;
+        }
+        return nextTimeMs;
       });
     }, 50);
 
@@ -58,106 +88,232 @@ export default function SongDetailsScreen() {
 
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
-  const stop = () => {
+  const togglePlay = () => (isPlaying ? pause() : play());
+  const resetPlayback = () => {
     setIsPlaying(false);
     setCurrentTimeMs(0);
   };
 
   const displayTimeMs = adjustedTimeMs(currentTimeMs);
-  const activeNote = song.targetNotes.find(
-    (note) => displayTimeMs >= note.timestampMs && displayTimeMs < note.timestampMs + note.durationMs,
+  const activeNote = targetNotes.find(
+    (note) =>
+      displayTimeMs >= (note.timestampMs ?? 0) &&
+      displayTimeMs < (note.timestampMs ?? 0) + (note.durationMs ?? 700),
   );
 
-  const handleStart = () => {
-    setViewMode('viewer');
-    play();
-  };
-
   const handleBack = () => {
-    stop();
+    resetPlayback();
     router.back();
   };
 
-  if (!song) return <Text>Song not found</Text>;
+  const [canvasLayoutWidth, setCanvasLayoutWidth] = useState<number>(0);
+  const canvasWidth = Math.min(WINDOW_WIDTH - 32, 960);
+  const currentSeconds = Math.floor(currentTimeMs / 1000);
+  const totalSeconds = Math.ceil(totalDurationMs / 1000);
+  const progressPercent = Math.min(100, Math.round((currentTimeMs / totalDurationMs) * 100));
 
-  if (viewMode === 'viewer') {
+  if (!song) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Viewer Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={handleBack} style={styles.iconButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{song.title}</Text>
-          <TouchableOpacity onPress={pause} style={styles.iconButton}>
-            <Ionicons name="pause" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.canvasContainer}>
-          <SvgSheetCanvas 
-            notes={song.targetNotes}
-            activeNoteId={activeNote?.id ?? null}
-            width={WINDOW_WIDTH - 48}
-            height={320}
-            keySignature={song.keySignature}
-            timeSignature={song.timeSignature}
-            tempoBpm={song.tempoBpm}
-            isPlaying={isPlaying}
-            tempoMultiplier={tempoMultiplier}
-            onTogglePlay={isPlaying ? pause : play}
-            onTempoChange={setTempoMultiplier}
-          />
-        </View>
+        <Text style={[typography.titleSmall, { color: colors.text, padding: 24 }]}>Song not found</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Sticky Back Arrow */}
-      <TouchableOpacity 
-        onPress={handleBack} 
-        style={[styles.backButton, { backgroundColor: colors.border }]}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.text} />
-      </TouchableOpacity>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      {/* ── PLATFORM-ADAPTIVE HEADER ──────────────────────────────────────── */}
+      <AdaptiveHeader
+        title={song.title}
+        subtitle={`#${song.number} • ${song.keySignature || 'C'}`}
+        onBack={handleBack}
+        backgroundColor={colors.surface}
+        textColor={colors.text}
+        borderColor={colors.border}
+        rightElement={
+          <Pressable
+            onPress={togglePlay}
+            android_ripple={
+              interaction.useRipple
+                ? { color: 'rgba(255,255,255,0.15)', borderless: true, radius: 22 }
+                : undefined
+            }
+            style={({ pressed }) => [
+              styles.headerPlayBtn,
+              isPlaying ? styles.headerPlayBtnActive : styles.headerPlayBtnDefault,
+              isIOS && pressed && { opacity: interaction.pressOpacity },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause playback' : 'Start playback'}
+          >
+            <Ionicons
+              name={isPlaying ? 'pause' : 'play'}
+              size={18}
+              color={isPlaying ? '#0F172A' : '#FFFFFF'}
+              style={!isPlaying ? { marginLeft: 2 } : undefined}
+            />
+            <Text style={[
+              typography.labelButton,
+              { color: isPlaying ? '#0F172A' : '#FFFFFF', fontSize: isIOS ? 14 : 12 },
+            ]}>
+              {isPlaying ? 'Pause' : 'Play'}
+            </Text>
+          </Pressable>
+        }
+        centerElement={
+          <View style={isIOS ? styles.headerCenterIOS : styles.headerCenterAndroid}>
+            <Text style={[isIOS ? styles.iosTitleText : styles.androidTitleText, { color: colors.text }]} numberOfLines={1}>
+              {song.title}
+            </Text>
+            <View style={styles.headerMetaRow}>
+              <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>
+                #{song.number} • {song.keySignature || 'C'}
+              </Text>
+              <View style={styles.headerTimeBadge}>
+                <TimeSignatureMark timeSignature={song.timeSignature} color={colors.text} size={11} />
+              </View>
+            </View>
+          </View>
+        }
+      />
 
-      <View style={styles.content}>
-        <View style={styles.badge}>
-          <Text style={[styles.badgeText, { color: colors.background }]}>Hymn {song.number}</Text>
+      {/* ── PLAYBACK CONTROL TOOLBAR ─────────────────────────────────────── */}
+      <View style={[
+        styles.playbackToolbar,
+        {
+          backgroundColor: isIOS ? colors.background : colors.surfaceContainer,
+          borderBottomWidth: isIOS ? 0.5 : 0,
+          borderBottomColor: colors.border,
+          ...getElevation(isIOS ? 0 : 1),
+        },
+      ]}>
+        {/* Progress Group */}
+        <View style={styles.toolbarProgressGroup}>
+          <Pressable
+            onPress={resetPlayback}
+            android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: true, radius: 14 } : undefined}
+            style={({ pressed }) => [
+              styles.resetIconButton,
+              { backgroundColor: colors.surfaceContainerHigh },
+              isIOS && pressed && { opacity: interaction.pressOpacity },
+            ]}
+            accessibilityLabel="Reset playback to beginning"
+          >
+            <Ionicons name="refresh" size={16} color={colors.text} />
+          </Pressable>
+          <Text style={[styles.timeCounterText, { color: colors.text }]}>
+            {currentSeconds}s / {totalSeconds}s
+          </Text>
+          <View style={[styles.progressTrack, { backgroundColor: colors.surfaceContainerHigh }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${progressPercent}%`, backgroundColor: colors.accent },
+              ]}
+            />
+          </View>
         </View>
-        
-        <Text style={[styles.title, { color: colors.text }]}>{song.title}</Text>
-        
-        <View style={styles.metadataRow}>
-          <Text style={[styles.metadataLabel, { color: colors.text }]}>Key:</Text>
-          <Text style={[styles.metadataValue, { color: colors.text }]}>{song.keySignature || 'C Major'}</Text>
+
+        {/* Speed Selector Chips */}
+        <View style={styles.toolbarSpeedGroup}>
+          <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>
+            {Math.round(song.tempoBpm * tempoMultiplier)} BPM
+          </Text>
+          <View style={styles.speedChipsWrap}>
+            {TEMPO_SPEEDS.map((spd) => (
+              <AdaptiveChip
+                key={spd.value}
+                label={spd.label}
+                selected={tempoMultiplier === spd.value}
+                onPress={() => setTempoMultiplier(spd.value)}
+                selectedColor={colors.accent}
+                selectedTextColor="#0F172A"
+                style={styles.speedChip}
+              />
+            ))}
+          </View>
         </View>
-
-        <View style={styles.metadataRow}>
-          <Text style={[styles.metadataLabel, { color: colors.text }]}>Time:</Text>
-          <TimeSignatureMark timeSignature={song.timeSignature} color={colors.text} size={16} />
-        </View>
-
-        <View style={styles.metadataRow}>
-          <Text style={[styles.metadataLabel, { color: colors.text }]}>Tempo:</Text>
-          <Text style={[styles.metadataValue, { color: colors.text }]}>{song.tempoBpm} BPM</Text>
-        </View>
-
-        <Text style={[styles.description, { color: colors.text }]}>
-          {song.book}
-        </Text>
-
-        <TouchableOpacity 
-          style={[styles.playButton, { backgroundColor: colors.accent }]}
-          onPress={handleStart}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="play" size={24} color={colors.background} />
-          <Text style={[styles.playButtonText, { color: colors.background }]}>Start / Play</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* ── MAIN SHEET MUSIC PRESENTATION ─────────────────────────────────── */}
+      <ScrollView
+        style={styles.mainScrollView}
+        contentContainerStyle={styles.scrollContentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Standard Sheet Music Paper Card */}
+        <AdaptiveCard
+          elevation={2}
+          backgroundColor={isIOS ? '#FFFFFF' : colors.surface}
+          borderColor={colors.border}
+          style={styles.sheetPaperCard}
+        >
+          <View style={styles.sheetHeader}>
+            <View style={styles.sheetTitleGroup}>
+              <Text style={[typography.titleSmall, { color: isIOS ? '#0F172A' : colors.text }]}>
+                {song.title}
+              </Text>
+              <Text style={[typography.caption, { color: isIOS ? '#64748B' : colors.onSurfaceVariant, marginTop: 2 }]}>
+                {song.book || 'Standard Sheet Music'} • Hymn #{song.number}
+              </Text>
+            </View>
+            <View style={styles.sheetMetaRight}>
+              <Text style={[typography.caption, { color: isIOS ? '#475569' : colors.onSurfaceVariant }]}>
+                Key of {song.keySignature || 'C'}
+              </Text>
+              <Text style={[typography.caption, { color: isIOS ? '#475569' : colors.onSurfaceVariant }]}>
+                {song.timeSignature || '4/4'} Time
+              </Text>
+            </View>
+          </View>
+
+          {/* Standard 5-Line Music Staff Canvas */}
+          <View
+            style={styles.canvasContainer}
+            onLayout={(e) => {
+              const w = Math.round(e.nativeEvent.layout.width);
+              if (w > 0 && w !== canvasLayoutWidth) {
+                setCanvasLayoutWidth(w);
+              }
+            }}
+          >
+            <SvgSheetCanvas
+              notes={targetNotes}
+              activeNoteId={activeNote?.id ?? null}
+              width={canvasLayoutWidth || canvasWidth}
+              height={300}
+              keySignature={song.keySignature}
+              timeSignature={song.timeSignature}
+              tempoBpm={song.tempoBpm}
+              isPlaying={isPlaying}
+              tempoMultiplier={tempoMultiplier}
+              onTogglePlay={togglePlay}
+              onTempoChange={setTempoMultiplier}
+              showControls={false}
+            />
+          </View>
+        </AdaptiveCard>
+
+        {/* Dual-Clef Fullscreen Sheet Music Action */}
+        <View style={styles.footerActionRow}>
+          <AdaptiveButton
+            label="Open Fullscreen Interactive Grand Staff"
+            onPress={() => setIsModalOpen(true)}
+            variant="outlined"
+            color={colors.accent}
+            textColor={colors.text}
+            icon={<Ionicons name="musical-notes" size={18} color={colors.accent} style={{ marginRight: 6 }} />}
+            style={styles.fullscreenBtn}
+          />
+        </View>
+      </ScrollView>
+
+      {/* Fullscreen Interactive Sheet Music Modal */}
+      <HymnViewerModal
+        hymnIdOrNumber={song.id}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -165,99 +321,141 @@ export default function SongDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
   },
-  header: {
+  headerPlayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: isIOS ? 14 : 16,
+    paddingVertical: isIOS ? 8 : 6,
+    borderRadius: isIOS ? 20 : radius.small,
+    overflow: 'hidden',
+  },
+  headerPlayBtnDefault: {
+    backgroundColor: '#0284C7',
+  },
+  headerPlayBtnActive: {
+    backgroundColor: '#FACC15',
+  },
+  headerCenterIOS: {
+    alignItems: 'center',
+  },
+  headerCenterAndroid: {
+    alignItems: 'flex-start',
+  },
+  iosTitleText: {
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.41,
+  },
+  androidTitleText: {
+    fontSize: 20,
+    fontWeight: '400',
+    letterSpacing: 0,
+  },
+  headerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  headerTimeBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  playbackToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  iconButton: {
-    padding: 4,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 40,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 24,
-    padding: 8,
-    borderRadius: 8,
-    zIndex: 10,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#3b82f6',
-    marginBottom: 24,
-  },
-  badgeText: {
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  metadataRow: {
+  toolbarProgressGroup: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 8,
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  resetIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  timeCounterText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  toolbarSpeedGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  metadataLabel: {
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  metadataValue: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  description: {
-    textAlign: 'center',
-    fontSize: 16,
-    marginTop: 20,
-    opacity: 0.7,
-    paddingHorizontal: 20,
-    marginBottom: 40,
-  },
-  playButton: {
+  speedChipsWrap: {
     flexDirection: 'row',
-    paddingVertical: 18,
-    paddingHorizontal: 48,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    gap: 4,
   },
-  playButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 12,
+  speedChip: {
+    height: 26,
+    paddingHorizontal: 8,
+  },
+  mainScrollView: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  sheetPaperCard: {
+    width: '100%',
+    maxWidth: 960,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  sheetTitleGroup: {
+    flex: 1,
+  },
+  sheetMetaRight: {
+    alignItems: 'flex-end',
   },
   canvasContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
+    alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    overflow: 'hidden',
+  },
+  footerActionRow: {
+    width: '100%',
+    maxWidth: 960,
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  fullscreenBtn: {
+    height: isIOS ? 48 : 44,
+    borderRadius: isIOS ? radius.medium : radius.small,
   },
 });

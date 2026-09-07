@@ -1,14 +1,15 @@
+import AdaptiveChip from '@/src/components/adaptive/AdaptiveChip';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Modal,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity,
-    useWindowDimensions,
     View,
+    useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getGrandStaffHymn, GRAND_STAFF_HYMNS } from '../data/hymnData';
@@ -16,6 +17,9 @@ import { AudioPlaybackState, grandStaffAudio } from '../services/grandStaffAudio
 import type { ClefNote, GrandStaffHymn } from '../types/music';
 import GrandStaffViewer from './GrandStaffViewer';
 import TimeSignatureMark from './TimeSignatureMark';
+import { getElevation, heights, interaction, radius, spacing, typography } from '../theme/platformDesign';
+
+const isIOS = Platform.OS === 'ios';
 
 export interface HymnViewerModalProps {
   hymnIdOrNumber: string | number | null;
@@ -203,44 +207,56 @@ export default function HymnViewerModal({
     >
       <SafeAreaView style={styles.fullscreenContainer}>
         {/* ── STICKY HEADER BAR ────────────────────────────────────────────── */}
-        <View style={styles.stickyHeader}>
+        <View style={[
+          styles.stickyHeader,
+          {
+            height: isIOS ? 52 : heights.navBar,
+            borderBottomWidth: isIOS ? 0.5 : 0,
+            ...getElevation(isIOS ? 0 : 2),
+          },
+        ]}>
           {/* Left Column: Hymn Identity */}
           <View style={styles.headerLeft}>
-            <View style={styles.hymnNumberBadge}>
+            <View style={[styles.hymnNumberBadge, { borderRadius: isIOS ? 8 : 8 }]}>
               <Text style={styles.hymnNumberText}>#{hymn.number}</Text>
             </View>
             <View style={styles.timeSigBadge}>
               <TimeSignatureMark timeSignature={hymn.timeSignature} color="#F8FAFC" size={14} />
             </View>
             <View style={styles.hymnMetaInfo}>
-              <Text style={styles.hymnTitle} numberOfLines={1}>
+              <Text style={[isIOS ? styles.iosTitleText : styles.androidTitleText, { color: '#FFFFFF' }]} numberOfLines={1}>
                 {hymn.title}
               </Text>
               <View style={styles.metaRow}>
-                <Text style={styles.metaBadge}>{hymn.book}</Text>
+                <Text style={[typography.caption, { color: '#94A3B8' }]}>{hymn.book}</Text>
                 <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.metaBadge}>Key of {hymn.keySignature}</Text>
+                <Text style={[typography.caption, { color: '#94A3B8' }]}>Key of {hymn.keySignature}</Text>
                 <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.metaBadge}>{hymn.timeSignature} Time</Text>
+                <Text style={[typography.caption, { color: '#94A3B8' }]}>{hymn.timeSignature} Time</Text>
               </View>
             </View>
           </View>
 
           {/* Center Column: Playback Controls */}
           <View style={styles.headerCenter}>
-            <TouchableOpacity
-              style={styles.stepBtn}
+            <Pressable
+              style={[styles.stepBtn, { borderRadius: isIOS ? 17 : 20 }]}
               onPress={() => handleStepMeasure(-1)}
-              activeOpacity={0.7}
+              android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: true } : undefined}
               accessibilityLabel="Previous Measure"
             >
               <Ionicons name="play-back" size={18} color="#CBD5E1" />
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[styles.primaryPlayBtn, isPlaying && styles.primaryPlayBtnActive]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryPlayBtn,
+                isPlaying && styles.primaryPlayBtnActive,
+                { borderRadius: isIOS ? 22 : 16 },
+                isIOS && pressed && { opacity: interaction.pressOpacity },
+              ]}
               onPress={handleTogglePlay}
-              activeOpacity={0.8}
+              android_ripple={interaction.useRipple ? { color: 'rgba(0,0,0,0.15)', borderless: false } : undefined}
               accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
             >
               <Ionicons
@@ -249,28 +265,28 @@ export default function HymnViewerModal({
                 color="#0F172A"
                 style={!isPlaying ? { marginLeft: 2 } : undefined}
               />
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={styles.stepBtn}
+            <Pressable
+              style={[styles.stepBtn, { borderRadius: isIOS ? 17 : 20 }]}
               onPress={() => handleStepMeasure(1)}
-              activeOpacity={0.7}
+              android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: true } : undefined}
               accessibilityLabel="Next Measure"
             >
               <Ionicons name="play-forward" size={18} color="#CBD5E1" />
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={styles.resetBtn}
+            <Pressable
+              style={[styles.resetBtn, { borderRadius: isIOS ? 17 : 20 }]}
               onPress={handleReset}
-              activeOpacity={0.7}
+              android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: true } : undefined}
               accessibilityLabel="Reset Playback"
             >
               <Ionicons name="refresh" size={18} color="#94A3B8" />
-            </TouchableOpacity>
+            </Pressable>
 
             {/* Current Position Counter */}
-            <View style={styles.measureCounterBadge}>
+            <View style={[styles.measureCounterBadge, { borderRadius: isIOS ? 8 : 6 }]}>
               <Text style={styles.measureCounterText}>
                 m.{playbackState.currentMeasure + 1} / {hymn.totalMeasures}
               </Text>
@@ -286,37 +302,32 @@ export default function HymnViewerModal({
               </View>
               <View style={styles.tempoPillWrap}>
                 {TEMPO_SPEEDS.map((spd) => (
-                  <TouchableOpacity
+                  <AdaptiveChip
                     key={spd.value}
-                    style={[
-                      styles.tempoSpeedPill,
-                      tempoMultiplier === spd.value && styles.tempoSpeedPillActive,
-                    ]}
+                    label={spd.label}
+                    selected={tempoMultiplier === spd.value}
                     onPress={() => handleTempoChange(spd.value)}
-                    activeOpacity={0.75}
-                  >
-                    <Text
-                      style={[
-                        styles.tempoSpeedText,
-                        tempoMultiplier === spd.value && styles.tempoSpeedTextActive,
-                      ]}
-                    >
-                      {spd.label}
-                    </Text>
-                  </TouchableOpacity>
+                    selectedColor="#38BDF8"
+                    selectedTextColor="#0F172A"
+                    style={styles.tempoChip}
+                  />
                 ))}
               </View>
             </View>
 
             {/* Prominent Exit Fullscreen Button */}
-            <TouchableOpacity
-              style={styles.closeBtn}
+            <Pressable
+              style={({ pressed }) => [
+                styles.closeBtn,
+                { borderRadius: isIOS ? 20 : 12 },
+                isIOS && pressed && { opacity: interaction.pressOpacity },
+              ]}
               onPress={onClose}
-              activeOpacity={0.75}
+              android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: false } : undefined}
               accessibilityLabel="Close Fullscreen Sheet Music Viewer"
             >
               <Ionicons name="close" size={24} color="#F1F5F9" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
 
@@ -337,11 +348,17 @@ export default function HymnViewerModal({
         </View>
 
         {/* ── FOOTER BAR WITH SHORTCUTS & SYNC METRICS ─────────────────────── */}
-        <View style={styles.footerBar}>
+        <View style={[
+          styles.footerBar,
+          {
+            borderTopWidth: isIOS ? 0.5 : 0,
+            ...getElevation(isIOS ? 0 : 2),
+          },
+        ]}>
           <View style={styles.footerInfoLeft}>
             <View style={styles.liveNoteIndicator}>
               <Text style={styles.liveNoteDot}>●</Text>
-              <Text style={styles.liveNoteText}>
+              <Text style={[typography.caption, { color: '#94A3B8' }]}>
                 {isPlaying
                   ? `Treble: ${playbackState.activeTrebleNoteIds.length > 0 ? 'Active' : 'Rest'}  |  Bass: ${playbackState.activeBassNoteIds.length > 0 ? 'Active' : 'Rest'}`
                   : 'Interactive Dual-Clef Grand Staff • Click any measure or note'}
@@ -367,7 +384,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    backgroundColor: '#0F172A', // Slate-900
+    backgroundColor: '#0F172A',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -376,10 +393,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: isIOS ? 16 : 20,
+    paddingVertical: isIOS ? 8 : 12,
     backgroundColor: '#1E293B',
-    borderBottomWidth: 1,
     borderBottomColor: '#334155',
     zIndex: 50,
   },
@@ -393,7 +409,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#38BDF8',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
     marginRight: 12,
   },
   hymnNumberText: {
@@ -413,22 +428,21 @@ const styles = StyleSheet.create({
   hymnMetaInfo: {
     flex: 1,
   },
-  hymnTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+  iosTitleText: {
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.41,
+  },
+  androidTitleText: {
+    fontSize: 18,
+    fontWeight: '500',
+    letterSpacing: 0,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
     gap: 6,
-  },
-  metaBadge: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600',
   },
   metaDot: {
     color: '#475569',
@@ -444,40 +458,50 @@ const styles = StyleSheet.create({
   primaryPlayBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
     backgroundColor: '#38BDF8',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#38BDF8',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   primaryPlayBtnActive: {
     backgroundColor: '#FACC15',
-    shadowColor: '#FACC15',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FACC15',
+      },
+    }),
   },
   stepBtn: {
     width: 34,
     height: 34,
-    borderRadius: 17,
     backgroundColor: '#334155',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   resetBtn: {
     width: 34,
     height: 34,
-    borderRadius: 17,
     backgroundColor: '#334155',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   measureCounterBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: '#0F172A',
-    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#334155',
     marginLeft: 4,
@@ -511,37 +535,21 @@ const styles = StyleSheet.create({
   },
   tempoPillWrap: {
     flexDirection: 'row',
-    backgroundColor: '#0F172A',
-    borderRadius: 6,
-    padding: 2,
-    gap: 2,
+    gap: 3,
   },
-  tempoSpeedPill: {
+  tempoChip: {
+    height: 24,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  tempoSpeedPillActive: {
-    backgroundColor: '#38BDF8',
-  },
-  tempoSpeedText: {
-    color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  tempoSpeedTextActive: {
-    color: '#0F172A',
-    fontWeight: '900',
   },
   closeBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     backgroundColor: '#334155',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#475569',
+    overflow: 'hidden',
   },
   viewportContainer: {
     flex: 1,
@@ -554,7 +562,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: '#1E293B',
-    borderTopWidth: 1,
     borderTopColor: '#334155',
   },
   footerInfoLeft: {
@@ -569,11 +576,6 @@ const styles = StyleSheet.create({
   liveNoteDot: {
     color: '#10B981',
     fontSize: 10,
-  },
-  liveNoteText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '500',
   },
   keyboardHints: {
     flexDirection: 'row',

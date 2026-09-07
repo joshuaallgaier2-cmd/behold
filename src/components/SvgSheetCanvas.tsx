@@ -64,33 +64,17 @@ const TREBLE_TOP_STEP = 38; // F5
 const BASS_TOP_STEP = 26; // A3
 const BASS_BOTTOM_STEP = 18; // G2
 
+import {
+  BRAVURA_GLYPHS,
+  getTimeSigGlyphPath,
+  parseTimeSignature,
+} from '../utils/musicNotationUtils';
+
 const STAFF_INK = '#1E293B';
 const DEFAULT_NOTE = '#0F172A';
 const DEFAULT_HIGHLIGHT = '#00C2FF';
 const HIT_CORRECT = '#10B981';
 const HIT_INCORRECT = '#EF4444';
-
-/**
- * Filled G-clef (Treble clef) path.
- */
-const TREBLE_CLEF_PATH =
-  'M8.2,1.4 C8.6,-6.2 16.4,-8.8 18.8,-3.2 C20.8,1.6 16.2,6.4 11.6,10.8 ' +
-  'C6.4,15.8 3.2,22.2 4.8,29.4 C6.4,36.8 14.6,41.2 21.2,38.4 C27.6,35.6 30.2,27.4 26.4,21.8 ' +
-  'C22.8,16.4 14.8,16.8 12.2,22.2 C9.8,27.2 14.2,31.6 18.8,30.2 C23.2,28.8 24.4,23.6 20.6,21.2 ' +
-  'C24.8,18.6 28.8,22.8 28.2,28.6 C27.4,36.8 19.2,42.8 11.4,41.6 C2.8,40.2 -1.2,31.4 1.2,23.2 ' +
-  'C3.4,15.6 9.2,10.2 13.8,5.4 C16.8,2.2 17.6,-1.6 15.4,-3.4 C13.2,-5.2 10.2,-3.6 9.8,0.2 ' +
-  'C9.6,2.2 11.2,3.6 12.8,3.2 C14.4,2.8 15.2,1.2 14.6,-0.4 C13.8,-2.6 11.2,-3.2 9.6,-1.6 ' +
-  'C7.4,0.6 7.6,4.8 10.4,7.2 C4.8,12.6 -0.2,20.8 1.8,30.6 C3.8,40.8 14.2,47.6 24.2,45.2 ' +
-  'C33.8,42.8 39.2,32.6 36.2,23.4 C33.4,14.8 23.6,10.4 16.2,14.8 C14.4,10.2 12.6,5.6 12.2,1.2 Z';
-
-/**
- * Filled F-clef (Bass clef) path.
- */
-const BASS_CLEF_PATH =
-  'M4.2,-11.4 C16.8,-11.4 26.4,-3.2 26.4,8.2 C26.4,20.8 16.2,29.6 3.6,29.6 ' +
-  'C1.2,29.6 -0.4,27.8 0.2,25.6 C0.8,23.4 2.8,22.4 4.8,22.8 C13.6,24.4 20.2,17.8 20.2,8.6 ' +
-  'C20.2,0.2 13.8,-6.2 5.4,-6.2 C2.2,-6.2 1.2,-2.4 3.8,0.2 C6.4,2.8 10.8,0.8 10.4,-3.2 ' +
-  'C10.2,-5.6 7.6,-7.2 5.2,-6.8 C-2.4,-5.4 -4.8,4.2 -0.6,11.4 C-4.8,6.2 -5.6,-4.8 4.2,-11.4 Z';
 
 interface KeySignatureInfo {
   type: '#' | 'b';
@@ -250,7 +234,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
   hitFeedback,
   onNotePress,
   onSheetPress,
-  showControls = true,
+  showControls = false,
 }) => {
   const trebleTopY = 54;
   const trebleBottomY = trebleTopY + STAFF_HEIGHT;
@@ -262,7 +246,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
   const accidentalCount = keyInfo.count;
   const accidentalGlyph = keyInfo.type === '#' ? '♯' : '♭';
   const keyEndX = CLEF_X + 46 + accidentalCount * 16;
-  const [beats, beatUnit] = (timeSignature.includes('/') ? timeSignature : '4/4').split('/');
+  const { beats, beatUnit } = parseTimeSignature(timeSignature);
 
   const dynamicNoteStartX = Math.max(195, keyEndX + 52);
 
@@ -309,30 +293,34 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
     });
   };
 
-  const renderTimeSignature = (topY: number) => (
-    <G>
-      <Text
-        x={keyEndX + 18}
-        y={topY + LINE_SPACING * 1.7}
-        fontSize={26}
-        fontWeight="800"
-        fill={STAFF_INK}
-        textAnchor="middle"
-      >
-        {beats}
-      </Text>
-      <Text
-        x={keyEndX + 18}
-        y={topY + LINE_SPACING * 3.7}
-        fontSize={26}
-        fontWeight="800"
-        fill={STAFF_INK}
-        textAnchor="middle"
-      >
-        {beatUnit}
-      </Text>
-    </G>
-  );
+  const renderTimeSignature = (topY: number, bottomY: number) => {
+    const timeSigScale = LINE_SPACING / 250;
+    const topChars = beats.split('');
+    const botChars = beatUnit.split('');
+    const timeSigX = keyEndX + 16;
+
+    return (
+      <G>
+        {/* Numerator between line 3 and line 5 (baseline on middle Line 3) */}
+        <G transform={`translate(${timeSigX}, ${topY + LINE_SPACING * 2}) scale(${timeSigScale})`}>
+          {topChars.map((ch, idx) => (
+            <G key={`ts-top-${idx}`} transform={`translate(${idx * 420}, 0)`}>
+              <Path d={getTimeSigGlyphPath(ch)} fill={STAFF_INK} />
+            </G>
+          ))}
+        </G>
+
+        {/* Denominator between line 1 and line 3 (baseline on bottom Line 1) */}
+        <G transform={`translate(${timeSigX}, ${bottomY}) scale(${timeSigScale})`}>
+          {botChars.map((ch, idx) => (
+            <G key={`ts-bot-${idx}`} transform={`translate(${idx * 420}, 0)`}>
+              <Path d={getTimeSigGlyphPath(ch)} fill={STAFF_INK} />
+            </G>
+          ))}
+        </G>
+      </G>
+    );
+  };
 
   const renderedNotes = useMemo(() => {
     const safeNotes = notes ?? [];
@@ -453,7 +441,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
         width={width}
         height={height}
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="xMinYMid meet"
       >
         <Defs>
           <Filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
@@ -507,23 +495,21 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
         {renderStaff(trebleTopY, 'treble')}
         {renderStaff(bassTopY, 'bass')}
 
-        {/* Treble (G) clef */}
-        <G transform={`translate(${CLEF_X - 6}, ${trebleBottomY - LINE_SPACING}) scale(1.05)`}>
-          <Path d={TREBLE_CLEF_PATH} fill={STAFF_INK} />
+        {/* Treble (G) clef (SMuFL Bravura G-Clef aligned to G4-line) */}
+        <G transform={`translate(${CLEF_X}, ${trebleTopY + LINE_SPACING * 3}) scale(${LINE_SPACING / 250})`}>
+          <Path d={BRAVURA_GLYPHS.gClef.path} fill={STAFF_INK} />
         </G>
 
-        {/* Bass (F) clef */}
-        <G transform={`translate(${CLEF_X + 2}, ${bassTopY + LINE_SPACING}) scale(0.92)`}>
-          <Path d={BASS_CLEF_PATH} fill={STAFF_INK} />
-          <Circle cx="30" cy="-7" r="2.6" fill={STAFF_INK} />
-          <Circle cx="30" cy="7" r="2.6" fill={STAFF_INK} />
+        {/* Bass (F) clef (SMuFL Bravura F-Clef aligned to F3-line with dots in spaces 3 & 4) */}
+        <G transform={`translate(${CLEF_X}, ${bassTopY + LINE_SPACING}) scale(${LINE_SPACING / 250})`}>
+          <Path d={BRAVURA_GLYPHS.fClef.path} fill={STAFF_INK} />
         </G>
 
         {renderKeyAccidentals('treble', trebleBottomY)}
         {renderKeyAccidentals('bass', bassBottomY)}
 
-        {renderTimeSignature(trebleTopY)}
-        {renderTimeSignature(bassTopY)}
+        {renderTimeSignature(trebleTopY, trebleBottomY)}
+        {renderTimeSignature(bassTopY, bassBottomY)}
 
         {renderedNotes}
       </Svg>

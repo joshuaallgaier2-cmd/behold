@@ -2,10 +2,15 @@ import React, { createContext, ReactNode, useContext, useState } from 'react';
 
 /**
  * Interface defining the color structure for the Behold application.
+ * Includes MD3 surface tokens for Material Design 3 compatibility.
  */
 export interface ThemeColors {
   background: string;
   surface: string;
+  surfaceContainer: string;
+  surfaceContainerHigh: string;
+  onSurface: string;
+  onSurfaceVariant: string;
   text: string;
   accent: string;
   border: string;
@@ -24,10 +29,15 @@ interface ThemeContextProps {
 
 /**
  * Exact values for the Dark and Light themes as per engineering requirements.
+ * Extended with MD3 surface container tokens.
  */
 const darkTheme: ThemeColors = {
   background: '#121212',
   surface: '#1E1E1E',
+  surfaceContainer: '#1E293B',
+  surfaceContainerHigh: '#334155',
+  onSurface: '#FFFFFF',
+  onSurfaceVariant: '#94A3B8',
   text: '#FFFFFF',
   accent: '#FFD700',
   border: '#2C2C2C',
@@ -38,6 +48,10 @@ const darkTheme: ThemeColors = {
 const lightTheme: ThemeColors = {
   background: '#F8F9FA',
   surface: '#FFFFFF',
+  surfaceContainer: '#F1F5F9',
+  surfaceContainerHigh: '#E2E8F0',
+  onSurface: '#1A1A1A',
+  onSurfaceVariant: '#64748B',
   text: '#1A1A1A',
   accent: '#D4AF37',
   border: '#E5E5E5',
