@@ -1,9 +1,8 @@
 import { Slot, usePathname, useRouter } from 'expo-router';
-import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { LiquidGlassView } from '../src/components/LiquidGlassView';
-import { ThemeProvider, useBeholdTheme } from '../src/context/ThemeContext';
+import { LiquidGlassView } from '../../src/components/LiquidGlassView';
+import { ThemeProvider, useBeholdTheme } from '../../src/context/ThemeContext';
 
 function NavigationLayoutContent() {
   const { width, height } = useWindowDimensions();
