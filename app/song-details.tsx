@@ -1,28 +1,70 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, SafeAreaView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useBeholdTheme } from '@/hooks/use-behold-theme';
-import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
 import SvgSheetCanvas from '@/src/components/SvgSheetCanvas';
+import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
 import { usePracticeEngine } from '@/src/hooks/usePracticeEngine';
-import { audioEngine } from '@/src/services/audioEngine';
-import { evaluatePitchMatch, stopPitchListening } from '@/src/services/pitchDetector';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
 export default function SongDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { colors } = useBeholdTheme();
   const [viewMode, setViewMode] = useState<'details' | 'viewer'>('details');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
+  const [tempoMultiplier, setTempoMultiplier] = useState(1);
 
   const song = useMemo(() => 
     INTERACTIVE_MUSIC_DATABASE.find(s => s.id === id) || INTERACTIVE_MUSIC_DATABASE[0],
     [id]
   );
 
-  const { play, pause, stop, currentBeat, totalBeats, bpm, tempoMultiplier } = usePracticeEngine(song);
+  const totalDurationMs = useMemo(() => {
+    const lastNote = song.targetNotes[song.targetNotes.length - 1];
+    return Math.max(1, (lastNote?.timestampMs ?? 0) + (lastNote?.durationMs ?? 0));
+  }, [song]);
+
+  const { adjustedTimeMs } = usePracticeEngine(
+    song.targetNotes,
+    {},
+    currentTimeMs,
+    isPlaying,
+    {
+      mode: 'listen',
+      loopStartMs: 0,
+      loopEndMs: totalDurationMs,
+      tempoMultiplier,
+    },
+  );
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      setCurrentTimeMs((timeMs) => {
+        const nextTimeMs = timeMs + 50 * tempoMultiplier;
+        return nextTimeMs >= totalDurationMs ? 0 : nextTimeMs;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, tempoMultiplier, totalDurationMs]);
+
+  const play = () => setIsPlaying(true);
+  const pause = () => setIsPlaying(false);
+  const stop = () => {
+    setIsPlaying(false);
+    setCurrentTimeMs(0);
+  };
+
+  const displayTimeMs = adjustedTimeMs(currentTimeMs);
+  const activeNote = song.targetNotes.find(
+    (note) => displayTimeMs >= note.timestampMs && displayTimeMs < note.timestampMs + note.durationMs,
+  );
 
   const handleStart = () => {
     setViewMode('viewer');
@@ -30,6 +72,7 @@ export default function SongDetailsScreen() {
   };
 
   const handleBack = () => {
+    stop();
     router.back();
   };
 
@@ -51,10 +94,17 @@ export default function SongDetailsScreen() {
 
         <View style={styles.canvasContainer}>
           <SvgSheetCanvas 
-            song={song} 
-            currentBeat={currentBeat} 
-            totalBeats={totalBeats} 
-            bpm={bpm * tempoMultiplier}
+            notes={song.targetNotes}
+            activeNoteId={activeNote?.id ?? null}
+            width={WINDOW_WIDTH - 48}
+            height={320}
+            keySignature={song.keySignature}
+            timeSignature={song.timeSignature}
+            tempoBpm={song.tempoBpm}
+            isPlaying={isPlaying}
+            tempoMultiplier={tempoMultiplier}
+            onTogglePlay={isPlaying ? pause : play}
+            onTempoChange={setTempoMultiplier}
           />
         </View>
       </SafeAreaView>
@@ -80,16 +130,16 @@ export default function SongDetailsScreen() {
         
         <View style={styles.metadataRow}>
           <Text style={[styles.metadataLabel, { color: colors.text }]}>Key:</Text>
-          <Text style={[styles.metadataValue, { color: colors.text }]}>{song.key || 'C Major'}</Text>
+          <Text style={[styles.metadataValue, { color: colors.text }]}>{song.keySignature || 'C Major'}</Text>
         </View>
 
         <View style={styles.metadataRow}>
           <Text style={[styles.metadataLabel, { color: colors.text }]}>Tempo:</Text>
-          <Text style={[styles.metadataValue, { color: colors.text }]}>{song.bpm} BPM</Text>
+          <Text style={[styles.metadataValue, { color: colors.text }]}>{song.tempoBpm} BPM</Text>
         </View>
 
         <Text style={[styles.description, { color: colors.text }]}>
-          {song.description || "No description available."}
+          {song.book}
         </Text>
 
         <TouchableOpacity 
