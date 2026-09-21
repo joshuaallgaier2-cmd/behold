@@ -31,7 +31,7 @@ export default function AdaptiveButton({
   size = 'medium',
   icon,
   disabled = false,
-  color = '#0284C7',
+  color = '#FFD700',
   textColor,
   style,
   labelStyle,
@@ -45,7 +45,7 @@ export default function AdaptiveButton({
     onPress();
   };
 
-  const resolvedTextColor = textColor ?? (variant === 'filled' ? '#FFFFFF' : color);
+  const resolvedTextColor = textColor ?? (variant === 'filled' ? '#000000' : color);
 
   const sizeStyles = SIZE_MAP[size];
   const variantStyles = getVariantStyles(variant, color, disabled);

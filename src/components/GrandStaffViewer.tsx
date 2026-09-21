@@ -26,10 +26,10 @@ import {
   getLedgerLineYs,
   getPitchStaffY,
   getStemGeometry,
-  getTimeSigGlyphPath,
   parsePitch,
   parseTimeSignature,
 } from '../utils/musicNotationUtils';
+import StaffTimeSignature, { getTimeSignatureStaffWidth } from './StaffTimeSignature';
 
 export interface GrandStaffViewerProps {
   hymn: GrandStaffHymn;
@@ -110,14 +110,21 @@ export default function GrandStaffViewer({
     );
   }, [hymn.keySignature]);
 
-  const { beats: timeBeats, beatUnit: timeBeatUnit } = parseTimeSignature(hymn.timeSignature);
+  // Measure key signature width and time signature width
+  const timeSigWidth = useMemo(
+    () => getTimeSignatureStaffWidth(hymn.timeSignature, LINE_SPACING),
+    [hymn.timeSignature]
+  );
 
-  // Total width of clef header before measure 0 starts
-  const headerWidth = useMemo(() => {
+  const { timeSigX, headerWidth } = useMemo(() => {
     const keyAccidentalCount = Math.max(keySigGlyphs.treble.length, 0);
     const keyWidth = keyAccidentalCount > 0 ? keyAccidentalCount * 12 + 6 : 4;
-    return BRACE_WIDTH + CLEF_WIDTH + keyWidth + TIME_SIG_WIDTH + 14;
-  }, [keySigGlyphs]);
+    const startX = BRACE_WIDTH + CLEF_WIDTH + keyWidth + 8;
+    return {
+      timeSigX: startX,
+      headerWidth: startX + timeSigWidth + 14,
+    };
+  }, [keySigGlyphs, timeSigWidth]);
 
   const totalSvgWidth = useMemo(() => {
     return headerWidth + hymn.totalMeasures * MEASURE_BASE_WIDTH + 50;
@@ -154,14 +161,14 @@ export default function GrandStaffViewer({
         <Svg width={totalSvgWidth} height={TOTAL_SVG_HEIGHT}>
           <Defs>
             <LinearGradient id="playheadGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#38BDF8" stopOpacity={1} />
-              <Stop offset="50%" stopColor="#0284C7" stopOpacity={0.9} />
-              <Stop offset="100%" stopColor="#38BDF8" stopOpacity={1} />
+              <Stop offset="0%" stopColor="#FFD700" stopOpacity={1} />
+              <Stop offset="50%" stopColor="#FACC15" stopOpacity={0.9} />
+              <Stop offset="100%" stopColor="#FFD700" stopOpacity={1} />
             </LinearGradient>
 
             <LinearGradient id="activeTrebleGrad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#38BDF8" />
-              <Stop offset="100%" stopColor="#0EA5E9" />
+              <Stop offset="0%" stopColor="#FFD700" />
+              <Stop offset="100%" stopColor="#FACC15" />
             </LinearGradient>
 
             <LinearGradient id="activeBassGrad" x1="0" y1="0" x2="1" y2="1">
@@ -170,8 +177,8 @@ export default function GrandStaffViewer({
             </LinearGradient>
 
             <LinearGradient id="activeLyricBg" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0%" stopColor="#0284C7" stopOpacity={0.85} />
-              <Stop offset="100%" stopColor="#38BDF8" stopOpacity={0.95} />
+              <Stop offset="0%" stopColor="#EAB308" stopOpacity={0.85} />
+              <Stop offset="100%" stopColor="#FFD700" stopOpacity={0.95} />
             </LinearGradient>
           </Defs>
 
@@ -244,7 +251,7 @@ export default function GrandStaffViewer({
                 key={`key-t-${idx}`}
                 x={g.x}
                 y={g.y + 4}
-                fill="#38BDF8"
+                fill="#FFD700"
                 fontSize={16}
                 fontWeight="bold"
                 textAnchor="middle"
@@ -257,7 +264,7 @@ export default function GrandStaffViewer({
                 key={`key-b-${idx}`}
                 x={g.x}
                 y={g.y + 4}
-                fill="#38BDF8"
+                fill="#FFD700"
                 fontSize={16}
                 fontWeight="bold"
                 textAnchor="middle"
@@ -266,21 +273,23 @@ export default function GrandStaffViewer({
               </SvgText>
             ))}
 
-            {/* Time Signature on Treble Staff (SMuFL Engraved Numerals) */}
-            <G transform={`translate(${headerWidth - 22}, ${TREBLE_TOP_Y + 2 * LINE_SPACING}) scale(0.048)`}>
-              <Path d={getTimeSigGlyphPath(timeBeats)} fill="#F8FAFC" />
-            </G>
-            <G transform={`translate(${headerWidth - 22}, ${TREBLE_BOTTOM_Y}) scale(0.048)`}>
-              <Path d={getTimeSigGlyphPath(timeBeatUnit)} fill="#F8FAFC" />
-            </G>
+            {/* Time Signature on Treble Staff (Classical Engraving) */}
+            <StaffTimeSignature
+              x={timeSigX}
+              topY={TREBLE_TOP_Y}
+              lineSpacing={LINE_SPACING}
+              timeSignature={hymn.timeSignature}
+              color="#F8FAFC"
+            />
 
-            {/* Time Signature on Bass Staff (SMuFL Engraved Numerals) */}
-            <G transform={`translate(${headerWidth - 22}, ${BASS_TOP_Y + 2 * LINE_SPACING}) scale(0.048)`}>
-              <Path d={getTimeSigGlyphPath(timeBeats)} fill="#F8FAFC" />
-            </G>
-            <G transform={`translate(${headerWidth - 22}, ${BASS_BOTTOM_Y}) scale(0.048)`}>
-              <Path d={getTimeSigGlyphPath(timeBeatUnit)} fill="#F8FAFC" />
-            </G>
+            {/* Time Signature on Bass Staff (Classical Engraving) */}
+            <StaffTimeSignature
+              x={timeSigX}
+              topY={BASS_TOP_Y}
+              lineSpacing={LINE_SPACING}
+              timeSignature={hymn.timeSignature}
+              color="#F8FAFC"
+            />
           </G>
 
           {/* ── 4. Measures, Barlines, Notes, and Synchronized Lyrics ───────── */}
@@ -299,8 +308,8 @@ export default function GrandStaffViewer({
                     y={TREBLE_TOP_Y - 14}
                     width={MEASURE_BASE_WIDTH}
                     height={TOTAL_SVG_HEIGHT - 12}
-                    fill="#0284C7"
-                    fillOpacity={0.12}
+                    fill="#FFD700"
+                    fillOpacity={0.15}
                     rx={6}
                   />
                 )}
@@ -309,7 +318,7 @@ export default function GrandStaffViewer({
                 <SvgText
                   x={measureStartX + 8}
                   y={TREBLE_TOP_Y - 10}
-                  fill={isCurrentMeasure ? '#38BDF8' : '#64748B'}
+                  fill={isCurrentMeasure ? '#FFD700' : '#64748B'}
                   fontSize={11}
                   fontWeight={isCurrentMeasure ? 'bold' : 'normal'}
                 >
@@ -377,7 +386,7 @@ export default function GrandStaffViewer({
                         <SvgText
                           x={noteX - 12}
                           y={noteY + 4}
-                          fill={isActive ? '#38BDF8' : '#CBD5E1'}
+                          fill={isActive ? '#FFD700' : '#CBD5E1'}
                           fontSize={13}
                           fontWeight="bold"
                           textAnchor="middle"
@@ -402,7 +411,7 @@ export default function GrandStaffViewer({
                         y1={stem.stemStartY}
                         x2={stem.stemX}
                         y2={stem.stemEndY}
-                        stroke={isActive ? '#38BDF8' : '#F1F5F9'}
+                        stroke={isActive ? '#FFD700' : '#F1F5F9'}
                         strokeWidth={1.8}
                       />
 
@@ -410,7 +419,7 @@ export default function GrandStaffViewer({
                       <SvgText
                         x={noteX}
                         y={stem.direction === 'up' ? noteY + 16 : noteY - 14}
-                        fill={isActive ? '#38BDF8' : '#94A3B8'}
+                        fill={isActive ? '#FFD700' : '#94A3B8'}
                         fontSize={9}
                         fontWeight="bold"
                         textAnchor="middle"
@@ -558,10 +567,10 @@ export default function GrandStaffViewer({
             {/* Top Playhead Marker */}
             <Path
               d={`M ${playheadX} ${TREBLE_TOP_Y - 22} L ${playheadX + 7} ${TREBLE_TOP_Y - 15} L ${playheadX} ${TREBLE_TOP_Y - 8} L ${playheadX - 7} ${TREBLE_TOP_Y - 15} Z`}
-              fill="#38BDF8"
+              fill="#FFD700"
             />
             {/* Bottom Glow Indicator */}
-            <Circle cx={playheadX} cy={LYRICS_Y + 24} r={5} fill="#38BDF8" />
+            <Circle cx={playheadX} cy={LYRICS_Y + 24} r={5} fill="#FFD700" />
           </G>
         </Svg>
       </ScrollView>
@@ -629,7 +638,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
   },
   measureChipActive: {
-    backgroundColor: '#0284C7',
+    backgroundColor: '#FFD700',
   },
   measureChipText: {
     color: '#CBD5E1',
@@ -637,7 +646,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   measureChipTextActive: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontWeight: '800',
   },
 });

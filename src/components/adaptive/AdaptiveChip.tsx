@@ -44,9 +44,9 @@ export default function AdaptiveChip({
 
   // Default colors
   const defaultBg = color ?? (isIOS ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)');
-  const defaultSelectedBg = selectedColor ?? '#0284C7';
+  const defaultSelectedBg = selectedColor ?? '#FFD700';
   const defaultText = textColor ?? '#94A3B8';
-  const defaultSelectedText = selectedTextColor ?? (isIOS ? '#FFFFFF' : '#0F172A');
+  const defaultSelectedText = selectedTextColor ?? '#000000';
 
   const chipBg = selected ? defaultSelectedBg : defaultBg;
   const chipText = selected ? defaultSelectedText : defaultText;

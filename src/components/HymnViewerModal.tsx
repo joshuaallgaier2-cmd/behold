@@ -17,6 +17,7 @@ import { AudioPlaybackState, grandStaffAudio } from '../services/grandStaffAudio
 import type { ClefNote, GrandStaffHymn } from '../types/music';
 import GrandStaffViewer from './GrandStaffViewer';
 import TimeSignatureMark from './TimeSignatureMark';
+import { parseTimeSignature } from '../utils/musicNotationUtils';
 import { getElevation, heights, interaction, radius, spacing, typography } from '../theme/platformDesign';
 
 const isIOS = Platform.OS === 'ios';
@@ -232,7 +233,9 @@ export default function HymnViewerModal({
                 <Text style={styles.metaDot}>•</Text>
                 <Text style={[typography.caption, { color: '#94A3B8' }]}>Key of {hymn.keySignature}</Text>
                 <Text style={styles.metaDot}>•</Text>
-                <Text style={[typography.caption, { color: '#94A3B8' }]}>{hymn.timeSignature} Time</Text>
+                <Text style={[typography.caption, { color: '#94A3B8' }]}>
+                  {parseTimeSignature(hymn.timeSignature).displayText} Time
+                </Text>
               </View>
             </View>
           </View>
@@ -297,7 +300,7 @@ export default function HymnViewerModal({
           <View style={styles.headerRight}>
             <View style={styles.tempoGroup}>
               <View style={styles.tempoLabelRow}>
-                <Ionicons name="speedometer-outline" size={14} color="#38BDF8" />
+                <Ionicons name="speedometer-outline" size={14} color="#FFD700" />
                 <Text style={styles.tempoBpmText}>{effectiveBpm} BPM</Text>
               </View>
               <View style={styles.tempoPillWrap}>
@@ -307,8 +310,8 @@ export default function HymnViewerModal({
                     label={spd.label}
                     selected={tempoMultiplier === spd.value}
                     onPress={() => handleTempoChange(spd.value)}
-                    selectedColor="#38BDF8"
-                    selectedTextColor="#0F172A"
+                    selectedColor="#FFD700"
+                    selectedTextColor="#000000"
                     style={styles.tempoChip}
                   />
                 ))}
@@ -406,13 +409,13 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   hymnNumberBadge: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginRight: 12,
   },
   hymnNumberText: {
-    color: '#0F172A',
+    color: '#000000',
     fontWeight: '900',
     fontSize: 15,
   },
@@ -458,13 +461,13 @@ const styles = StyleSheet.create({
   primaryPlayBtn: {
     width: 44,
     height: 44,
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#38BDF8',
+        shadowColor: '#FFD700',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.4,
         shadowRadius: 6,
@@ -507,7 +510,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   measureCounterText: {
-    color: '#38BDF8',
+    color: '#FFD700',
     fontSize: 12,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
@@ -529,7 +532,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tempoBpmText: {
-    color: '#38BDF8',
+    color: '#FFD700',
     fontSize: 12,
     fontWeight: '700',
   },

@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { INTERACTIVE_MUSIC_DATABASE } from '../../src/data/musicData';
+import { parseTimeSignature } from '../../src/utils/musicNotationUtils';
 
 export default function SongScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,7 +28,7 @@ export default function SongScreen() {
       <Text style={styles.subtitle}>Number: {currentSong.number}</Text>
       <Text style={styles.detail}>Category: {currentSong.category}</Text>
       <Text style={styles.detail}>Key: {currentSong.keySignature || 'C'}</Text>
-      <Text style={styles.detail}>Time: {currentSong.timeSignature || '4/4'}</Text>
+      <Text style={styles.detail}>Time: {parseTimeSignature(currentSong.timeSignature).displayText}</Text>
       <Text style={styles.detail}>Tempo: {currentSong.tempo}</Text>
     </View>
   );

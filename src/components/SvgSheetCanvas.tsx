@@ -66,13 +66,13 @@ const BASS_BOTTOM_STEP = 18; // G2
 
 import {
   BRAVURA_GLYPHS,
-  getTimeSigGlyphPath,
   parseTimeSignature,
 } from '../utils/musicNotationUtils';
+import StaffTimeSignature, { getTimeSignatureStaffWidth } from './StaffTimeSignature';
 
 const STAFF_INK = '#1E293B';
 const DEFAULT_NOTE = '#0F172A';
-const DEFAULT_HIGHLIGHT = '#00C2FF';
+const DEFAULT_HIGHLIGHT = '#FFD700';
 const HIT_CORRECT = '#10B981';
 const HIT_INCORRECT = '#EF4444';
 
@@ -246,9 +246,9 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
   const accidentalCount = keyInfo.count;
   const accidentalGlyph = keyInfo.type === '#' ? '♯' : '♭';
   const keyEndX = CLEF_X + 46 + accidentalCount * 16;
-  const { beats, beatUnit } = parseTimeSignature(timeSignature);
-
-  const dynamicNoteStartX = Math.max(195, keyEndX + 52);
+  const timeSigWidth = getTimeSignatureStaffWidth(timeSignature, LINE_SPACING);
+  const timeSigX = keyEndX + 14;
+  const dynamicNoteStartX = Math.max(195, timeSigX + timeSigWidth + 20);
 
   const yForStep = (step: number, onTreble: boolean): number => {
     const half = LINE_SPACING / 2;
@@ -293,34 +293,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
     });
   };
 
-  const renderTimeSignature = (topY: number, bottomY: number) => {
-    const timeSigScale = LINE_SPACING / 250;
-    const topChars = beats.split('');
-    const botChars = beatUnit.split('');
-    const timeSigX = keyEndX + 16;
 
-    return (
-      <G>
-        {/* Numerator between line 3 and line 5 (baseline on middle Line 3) */}
-        <G transform={`translate(${timeSigX}, ${topY + LINE_SPACING * 2}) scale(${timeSigScale})`}>
-          {topChars.map((ch, idx) => (
-            <G key={`ts-top-${idx}`} transform={`translate(${idx * 420}, 0)`}>
-              <Path d={getTimeSigGlyphPath(ch)} fill={STAFF_INK} />
-            </G>
-          ))}
-        </G>
-
-        {/* Denominator between line 1 and line 3 (baseline on bottom Line 1) */}
-        <G transform={`translate(${timeSigX}, ${bottomY}) scale(${timeSigScale})`}>
-          {botChars.map((ch, idx) => (
-            <G key={`ts-bot-${idx}`} transform={`translate(${idx * 420}, 0)`}>
-              <Path d={getTimeSigGlyphPath(ch)} fill={STAFF_INK} />
-            </G>
-          ))}
-        </G>
-      </G>
-    );
-  };
 
   const renderedNotes = useMemo(() => {
     const safeNotes = notes ?? [];
@@ -508,8 +481,21 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
         {renderKeyAccidentals('treble', trebleBottomY)}
         {renderKeyAccidentals('bass', bassBottomY)}
 
-        {renderTimeSignature(trebleTopY, trebleBottomY)}
-        {renderTimeSignature(bassTopY, bassBottomY)}
+        {/* Classical Engraved Time Signatures on Treble and Bass Staves */}
+        <StaffTimeSignature
+          x={timeSigX}
+          topY={trebleTopY}
+          lineSpacing={LINE_SPACING}
+          timeSignature={timeSignature}
+          color={STAFF_INK}
+        />
+        <StaffTimeSignature
+          x={timeSigX}
+          topY={bassTopY}
+          lineSpacing={LINE_SPACING}
+          timeSignature={timeSignature}
+          color={STAFF_INK}
+        />
 
         {renderedNotes}
       </Svg>
@@ -586,16 +572,16 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   floatingPlayBtn: {
-    backgroundColor: '#00C2FF',
+    backgroundColor: '#FFD700',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 8,
   },
   floatingPlayBtnActive: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#FACC15',
   },
   floatingPlayBtnText: {
-    color: '#080C14',
+    color: '#000000',
     fontSize: 11,
     fontWeight: '900',
   },
@@ -620,7 +606,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   floatingSpeedPillActive: {
-    backgroundColor: '#00C2FF',
+    backgroundColor: '#FFD700',
   },
   floatingSpeedPillText: {
     color: '#94A3B8',
@@ -628,7 +614,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   floatingSpeedPillTextActive: {
-    color: '#080C14',
+    color: '#000000',
     fontWeight: '900',
   },
 });

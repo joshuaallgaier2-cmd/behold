@@ -247,44 +247,88 @@ export function getKeySignatureGlyphs(
 
 export * from './musicGlyphs';
 
-export function parseTimeSignature(timeSignature?: string): { beats: string; beatUnit: string } {
+export interface ParsedTimeSignature {
+  beats: string;
+  beatUnit: string;
+  symbol?: 'C' | 'C|';
+  displayText: string;
+}
+
+export function parseTimeSignature(timeSignature?: string): ParsedTimeSignature {
   if (!timeSignature) {
-    return { beats: '4', beatUnit: '4' };
+    return { beats: '4', beatUnit: '4', displayText: '4/4' };
   }
   const str = String(timeSignature).trim();
-  if (str === 'C') return { beats: '4', beatUnit: '4' };
-  if (str === 'C|') return { beats: '2', beatUnit: '2' };
-  if (str.includes('/')) {
-    const [beats, beatUnit] = str.split('/');
+  const upper = str.toUpperCase();
+  if (upper === 'C' || upper === 'COMMON') {
+    return { beats: '4', beatUnit: '4', symbol: 'C', displayText: 'Common (4/4)' };
+  }
+  if (upper === 'C|' || upper === 'CUT' || upper === 'ALLABREVE' || upper === 'ALLA-BREVE') {
+    return { beats: '2', beatUnit: '2', symbol: 'C|', displayText: 'Cut (2/2)' };
+  }
+
+  // Check standard delimiters: "/", ":", or whitespace
+  const delimiterMatch = str.match(/^(\d+)\s*[/:\s]\s*(\d+)$/);
+  if (delimiterMatch) {
+    const beats = delimiterMatch[1] || '4';
+    const beatUnit = delimiterMatch[2] || '4';
     return {
-      beats: beats.trim() || '4',
-      beatUnit: beatUnit.trim() || '4',
+      beats,
+      beatUnit,
+      displayText: `${beats}/${beatUnit}`,
     };
   }
-  if (str.includes(':')) {
-    const [beats, beatUnit] = str.split(':');
+
+  // Handles shorthand notations without delimiter:
+  // e.g. "1216" -> 12/16, "332" -> 3/32
+  const unit16Or32Match = str.match(/^(\d+)(16|32)$/);
+  if (unit16Or32Match) {
+    const beats = unit16Or32Match[1];
+    const beatUnit = unit16Or32Match[2];
     return {
-      beats: beats.trim() || '4',
-      beatUnit: beatUnit.trim() || '4',
+      beats,
+      beatUnit,
+      displayText: `${beats}/${beatUnit}`,
     };
   }
-  if (str.includes(' ')) {
-    const [beats, beatUnit] = str.split(/\s+/);
+
+  // e.g. "34" -> 3/4, "44" -> 4/4, "68" -> 6/8, "128" -> 12/8, "24" -> 2/4, "22" -> 2/2, "38" -> 3/8, "98" -> 9/8, "54" -> 5/4, "124" -> 12/4
+  const standardUnitMatch = str.match(/^(\d+)([248])$/);
+  if (standardUnitMatch) {
+    const beats = standardUnitMatch[1];
+    const beatUnit = standardUnitMatch[2];
     return {
-      beats: beats.trim() || '4',
-      beatUnit: beatUnit.trim() || '4',
+      beats,
+      beatUnit,
+      displayText: `${beats}/${beatUnit}`,
     };
   }
-  // Handles shorthand notations like "34" -> 3/4, "44" -> 4/4, "68" -> 6/8, "24" -> 2/4, "22" -> 2/2
+
+  // Generic two-digit fallback
   if (/^\d\d$/.test(str)) {
     return {
       beats: str[0],
       beatUnit: str[1],
+      displayText: `${str[0]}/${str[1]}`,
     };
   }
+
+  // Strip non-digits and extract if possible
+  const digitsOnly = str.replace(/\D/g, '');
+  if (digitsOnly.length >= 2) {
+    const beats = digitsOnly.slice(0, -1);
+    const beatUnit = digitsOnly.slice(-1);
+    return {
+      beats: beats || '4',
+      beatUnit: beatUnit || '4',
+      displayText: `${beats || '4'}/${beatUnit || '4'}`,
+    };
+  }
+
   return {
     beats: '4',
     beatUnit: '4',
+    displayText: '4/4',
   };
 }
 

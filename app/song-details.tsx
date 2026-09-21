@@ -5,6 +5,7 @@ import AdaptiveHeader from '@/src/components/adaptive/AdaptiveHeader';
 import HymnViewerModal from '@/src/components/HymnViewerModal';
 import SvgSheetCanvas from '@/src/components/SvgSheetCanvas';
 import TimeSignatureMark from '@/src/components/TimeSignatureMark';
+import { parseTimeSignature } from '@/src/utils/musicNotationUtils';
 import { useBeholdTheme } from '@/src/context/ThemeContext';
 import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
 import { usePracticeEngine } from '@/src/hooks/usePracticeEngine';
@@ -262,7 +263,7 @@ export default function SongDetailsScreen() {
                 Key of {song.keySignature || 'C'}
               </Text>
               <Text style={[typography.caption, { color: isIOS ? '#475569' : colors.onSurfaceVariant }]}>
-                {song.timeSignature || '4/4'} Time
+                {parseTimeSignature(song.timeSignature).displayText} Time
               </Text>
             </View>
           </View>
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   headerPlayBtnDefault: {
-    backgroundColor: '#0284C7',
+    backgroundColor: '#FFD700',
   },
   headerPlayBtnActive: {
     backgroundColor: '#FACC15',

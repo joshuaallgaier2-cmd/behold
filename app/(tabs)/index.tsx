@@ -106,8 +106,8 @@ export default function DashboardScreen() {
               <AdaptiveChip
                 label="⚡ Interactive"
                 selected
-                selectedColor="#0369A1"
-                selectedTextColor="#E0F2FE"
+                selectedColor="#FFD700"
+                selectedTextColor="#000000"
                 style={styles.featureBadge}
               />
               <AdaptiveChip
