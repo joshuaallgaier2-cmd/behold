@@ -56,7 +56,7 @@ export default function SongsScreen() {
           <TouchableOpacity
             style={[styles.songCard, { backgroundColor: colors.background, borderColor: colors.border }]}
             activeOpacity={0.8}
-            onPress={() => router.push({ pathname: '/song-details', params: { id: item.id } })}
+            onPress={() => setSelectedHymnId(item.id)}
           >
             <View style={[styles.badge, { backgroundColor: colors.accent }]}>
               <Text style={styles.badgeText}>{item.number}</Text>
@@ -64,9 +64,6 @@ export default function SongsScreen() {
             <View style={styles.songInfo}>
               <Text style={[styles.songTitle, { color: colors.text }]}>{item.title}</Text>
               <Text style={[styles.songSource, { color: colors.text }]}>{item.sourceBook}</Text>
-            </View>
-            <View style={[styles.timeSigWrap, { borderColor: colors.border }]}>
-              <TimeSignatureMark timeSignature={item.timeSignature} color={colors.text} size={12} />
             </View>
           </TouchableOpacity>
         )}

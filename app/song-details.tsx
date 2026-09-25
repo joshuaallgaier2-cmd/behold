@@ -170,9 +170,6 @@ export default function SongDetailsScreen() {
               <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>
                 #{song.number} • {song.keySignature || 'C'}
               </Text>
-              <View style={styles.headerTimeBadge}>
-                <TimeSignatureMark timeSignature={song.timeSignature} color={colors.text} size={11} />
-              </View>
             </View>
           </View>
         }
@@ -261,9 +258,6 @@ export default function SongDetailsScreen() {
             <View style={styles.sheetMetaRight}>
               <Text style={[typography.caption, { color: isIOS ? '#475569' : colors.onSurfaceVariant }]}>
                 Key of {song.keySignature || 'C'}
-              </Text>
-              <Text style={[typography.caption, { color: isIOS ? '#475569' : colors.onSurfaceVariant }]}>
-                {parseTimeSignature(song.timeSignature).displayText} Time
               </Text>
             </View>
           </View>

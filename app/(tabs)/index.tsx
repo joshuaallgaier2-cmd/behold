@@ -100,9 +100,6 @@ export default function DashboardScreen() {
             </Text>
 
             <View style={styles.badgeRow}>
-              <View style={[styles.timeSigBadge, { backgroundColor: colors.surfaceContainerHigh, borderColor: colors.border }]}>
-                <TimeSignatureMark timeSignature={item.timeSignature} color={colors.text} size={11} />
-              </View>
               <AdaptiveChip
                 label="⚡ Interactive"
                 selected
@@ -284,12 +281,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 6,
     flexWrap: 'wrap',
-  },
-  timeSigBadge: {
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
   },
   featureBadge: {
     height: 24,

@@ -54,14 +54,11 @@ const CLEF_WIDTH = 48;
 const TIME_SIG_WIDTH = 24;
 const TOP_MARGIN = 36;
 const CLEF_GAP = 58; // Vertical gap between Treble Line 1 and Bass Line 5
-const LYRICS_OFFSET_Y = 32;
-
 const TREBLE_TOP_Y = TOP_MARGIN; // F5 (Line 5)
 const TREBLE_BOTTOM_Y = TREBLE_TOP_Y + STAFF_HEIGHT; // E4 (Line 1)
 const BASS_TOP_Y = TREBLE_BOTTOM_Y + CLEF_GAP; // A3 (Line 5)
 const BASS_BOTTOM_Y = BASS_TOP_Y + STAFF_HEIGHT; // G2 (Line 1)
-const LYRICS_Y = BASS_BOTTOM_Y + LYRICS_OFFSET_Y;
-const TOTAL_SVG_HEIGHT = LYRICS_Y + 48;
+const TOTAL_SVG_HEIGHT = BASS_BOTTOM_Y + 32;
 
 const MEASURE_BASE_WIDTH = 230;
 
@@ -136,8 +133,7 @@ export default function GrandStaffViewer({
     for (let m = 0; m < hymn.totalMeasures; m++) {
       const treble = hymn.trebleNotes.filter((n) => n.measure === m);
       const bass = hymn.bassNotes.filter((n) => n.measure === m);
-      const lyrics = hymn.lyrics.filter((l) => l.measure === m);
-      list.push({ measureIndex: m, treble, bass, lyrics });
+      list.push({ measureIndex: m, treble, bass });
     }
     return list;
   }, [hymn]);
@@ -292,8 +288,8 @@ export default function GrandStaffViewer({
             />
           </G>
 
-          {/* ── 4. Measures, Barlines, Notes, and Synchronized Lyrics ───────── */}
-          {measuresData.map(({ measureIndex, treble, bass, lyrics }) => {
+          {/* ── 4. Measures, Barlines, Notes ─────────────────────────────────── */}
+          {measuresData.map(({ measureIndex, treble, bass }) => {
             const measureStartX = headerWidth + measureIndex * MEASURE_BASE_WIDTH;
             const measureEndX = measureStartX + MEASURE_BASE_WIDTH;
             const isCurrentMeasure = measureIndex === currentMeasure;
@@ -515,41 +511,6 @@ export default function GrandStaffViewer({
                   );
                 })}
 
-                {/* ── C. Synchronized Lyrics Row (Exact X Match with Notes) ──── */}
-                {lyrics.map((lyric, lyricIdx) => {
-                  const lyricX = getBeatX(measureStartX, MEASURE_BASE_WIDTH, lyric.beat, hymn.beatsPerMeasure);
-                  const globalLyricIndex = hymn.lyrics.findIndex(
-                    (l) => l.measure === lyric.measure && l.beat === lyric.beat && l.text === lyric.text,
-                  );
-                  const isLyricActive = globalLyricIndex === activeLyricIndex;
-
-                  return (
-                    <G key={`lyric-${measureIndex}-${lyric.beat}-${lyricIdx}`}>
-                      {/* Active Syllable Highlight Pill */}
-                      {isLyricActive && (
-                        <Rect
-                          x={lyricX - 22}
-                          y={LYRICS_Y - 14}
-                          width={44}
-                          height={24}
-                          rx={12}
-                          fill="url(#activeLyricBg)"
-                        />
-                      )}
-
-                      <SvgText
-                        x={lyricX}
-                        y={LYRICS_Y + 2}
-                        fill={isLyricActive ? '#FFFFFF' : '#E2E8F0'}
-                        fontSize={isLyricActive ? 15 : 13}
-                        fontWeight={isLyricActive ? 'bold' : '500'}
-                        textAnchor="middle"
-                      >
-                        {lyric.text}
-                      </SvgText>
-                    </G>
-                  );
-                })}
               </G>
             );
           })}
@@ -560,7 +521,7 @@ export default function GrandStaffViewer({
               x1={playheadX}
               y1={TREBLE_TOP_Y - 18}
               x2={playheadX}
-              y2={LYRICS_Y + 24}
+              y2={TOTAL_SVG_HEIGHT - 4}
               stroke="url(#playheadGrad)"
               strokeWidth={3}
             />
@@ -570,7 +531,7 @@ export default function GrandStaffViewer({
               fill="#FFD700"
             />
             {/* Bottom Glow Indicator */}
-            <Circle cx={playheadX} cy={LYRICS_Y + 24} r={5} fill="#FFD700" />
+            <Circle cx={playheadX} cy={TOTAL_SVG_HEIGHT - 4} r={5} fill="#FFD700" />
           </G>
         </Svg>
       </ScrollView>
