@@ -174,7 +174,7 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
         style={[
           styles.needle,
           {
-              transform: [{ translateX: needlePosition }],
+            transform: [{ translateX: needlePosition }],
             backgroundColor: tunerColor,
           },
         ]}

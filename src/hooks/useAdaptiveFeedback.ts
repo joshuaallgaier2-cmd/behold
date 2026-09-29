@@ -4,10 +4,10 @@
  * iOS: Uses expo-haptics for tactile responses per Apple HIG.
  * Android: No haptic by default — relies on visual ripple feedback.
  */
-import { Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from "expo-haptics";
+import { Platform } from "react-native";
 
-type FeedbackType = 'light' | 'medium' | 'heavy' | 'selection';
+type FeedbackType = "light" | "medium" | "heavy" | "selection";
 
 /**
  * Returns a `triggerFeedback` function that fires platform-appropriate
@@ -17,22 +17,22 @@ type FeedbackType = 'light' | 'medium' | 'heavy' | 'selection';
  * On Android/Web: No-op (visual ripple is the primary feedback).
  */
 export function useAdaptiveFeedback() {
-  const triggerFeedback = (type: FeedbackType = 'light') => {
-    if (Platform.OS !== 'ios') return;
+  const triggerFeedback = (type: FeedbackType = "light") => {
+    if (Platform.OS !== "ios") return;
 
     try {
       let feedback: Promise<void>;
       switch (type) {
-        case 'light':
+        case "light":
           feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           break;
-        case 'medium':
+        case "medium":
           feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           break;
-        case 'heavy':
+        case "heavy":
           feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           break;
-        case 'selection':
+        case "selection":
           feedback = Haptics.selectionAsync();
           break;
       }

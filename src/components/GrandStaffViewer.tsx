@@ -92,7 +92,9 @@ export default function GrandStaffViewer({
   scrollRef,
 }: GrandStaffViewerProps) {
   const { width: windowWidth } = useWindowDimensions();
-  const [viewportWidth, setViewportWidth] = useState(Math.max(0, windowWidth - 24));
+  const [viewportWidth, setViewportWidth] = useState(
+    Math.max(0, windowWidth - 24),
+  );
 
   // Compute key signature accidentals
   const keySigGlyphs = useMemo(() => {

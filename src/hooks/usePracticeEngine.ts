@@ -1,5 +1,10 @@
-import type { EvaluationMap, PerformanceSummary, PracticeMode, TargetNote } from '@/src/types/music';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type {
+    EvaluationMap,
+    PerformanceSummary,
+    PracticeMode,
+    TargetNote,
+} from "@/src/types/music";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Practice engine configuration.
@@ -196,10 +201,10 @@ export function usePracticeEngine(
 
       // Detect state change (pending -> correct/incorrect)
       if (prevState !== currentState) {
-        if (currentState === 'correct') {
+        if (currentState === "correct") {
           deltaCorrect += 1;
           centsDeviationsRef.current.push(0);
-        } else if (currentState === 'incorrect') {
+        } else if (currentState === "incorrect") {
           deltaIncorrect += 1;
         }
       }
@@ -214,12 +219,15 @@ export function usePracticeEngine(
     setStats((prev) => {
       const correctCount = prev.correctCount + deltaCorrect;
       const incorrectCount = prev.incorrectCount + deltaIncorrect;
-      const currentStreak = deltaIncorrect > 0 ? 0 : prev.currentStreak + deltaCorrect;
+      const currentStreak =
+        deltaIncorrect > 0 ? 0 : prev.currentStreak + deltaCorrect;
       const longestStreak = Math.max(prev.longestStreak, currentStreak);
       const score = Math.max(0, prev.score - deltaIncorrect * 5);
       const totalAttempted = correctCount + incorrectCount;
       const accuracyPercentage =
-        totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 100;
+        totalAttempted > 0
+          ? Math.round((correctCount / totalAttempted) * 100)
+          : 100;
       const averageCentsDeviation =
         centsDeviationsRef.current.length > 0
           ? Math.abs(
@@ -229,7 +237,7 @@ export function usePracticeEngine(
           : 0;
 
       if (
-        config.mode === 'follow' &&
+        config.mode === "follow" &&
         incorrectCount > 0 &&
         (config.autoResumeMissedNotes ?? true)
       ) {
@@ -247,13 +255,19 @@ export function usePracticeEngine(
         averageCentsDeviation,
       };
     });
-  }, [evaluationMap, allTargetNotes, config.mode, config.autoResumeMissedNotes]);
+  }, [
+    evaluationMap,
+    allTargetNotes,
+    config.mode,
+    config.autoResumeMissedNotes,
+  ]);
 
   /**
    * Generate final performance summary.
    */
   const generatePerformanceSummary = useCallback((): PerformanceSummary => {
-    const missedNotes = allTargetNotes.length - stats.correctCount - stats.incorrectCount;
+    const missedNotes =
+      allTargetNotes.length - stats.correctCount - stats.incorrectCount;
     const accuracyPercentage =
       allTargetNotes.length > 0
         ? Math.round((stats.correctCount / allTargetNotes.length) * 100)
@@ -268,7 +282,13 @@ export function usePracticeEngine(
       averageCentsDeviation: stats.averageCentsDeviation,
       longestStreak: stats.longestStreak,
     };
-  }, [allTargetNotes, stats.correctCount, stats.incorrectCount, stats.averageCentsDeviation, stats.longestStreak]);
+  }, [
+    allTargetNotes,
+    stats.correctCount,
+    stats.incorrectCount,
+    stats.averageCentsDeviation,
+    stats.longestStreak,
+  ]);
 
   return {
     stats,

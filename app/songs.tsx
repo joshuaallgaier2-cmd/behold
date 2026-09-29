@@ -1,23 +1,31 @@
-import HymnViewerModal from '@/src/components/HymnViewerModal';
-import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useBeholdTheme } from '../hooks/use-behold-theme';
-import { INTERACTIVE_MUSIC_DATABASE } from '../src/data/musicData';
+import HymnViewerModal from "@/src/components/HymnViewerModal";
+import { useState } from "react";
+import {
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { useBeholdTheme } from "../hooks/use-behold-theme";
+import { INTERACTIVE_MUSIC_DATABASE } from "../src/data/musicData";
 
-type SongCategory = 'hymn' | 'children' | 'youth';
+type SongCategory = "hymn" | "children" | "youth";
 
 export default function SongsScreen() {
   const { colors } = useBeholdTheme();
-  const [activeCategory, setActiveCategory] = useState<SongCategory>('hymn');
+  const [activeCategory, setActiveCategory] = useState<SongCategory>("hymn");
   const [selectedHymnId, setSelectedHymnId] = useState<string | null>(null);
 
   const categories: { id: SongCategory; label: string }[] = [
-    { id: 'hymn', label: 'Hymns' },
-    { id: 'children', label: "Children's Songbook" },
-    { id: 'youth', label: 'Youth Album' },
+    { id: "hymn", label: "Hymns" },
+    { id: "children", label: "Children's Songbook" },
+    { id: "youth", label: "Youth Album" },
   ];
 
-  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter((song) => song.category === activeCategory);
+  const filteredSongs = INTERACTIVE_MUSIC_DATABASE.filter(
+    (song) => song.category === activeCategory,
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -30,12 +38,18 @@ export default function SongsScreen() {
             <TouchableOpacity
               key={cat.id}
               onPress={() => setActiveCategory(cat.id)}
-              style={[styles.tabItem, isActive && { borderBottomColor: colors.accent }]}
+              style={[
+                styles.tabItem,
+                isActive && { borderBottomColor: colors.accent },
+              ]}
             >
               <Text
                 style={[
                   styles.tabText,
-                  { color: isActive ? colors.accent : colors.text, fontWeight: isActive ? '700' : '500' },
+                  {
+                    color: isActive ? colors.accent : colors.text,
+                    fontWeight: isActive ? "700" : "500",
+                  },
                 ]}
               >
                 {cat.label}
@@ -51,7 +65,13 @@ export default function SongsScreen() {
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.songCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+            style={[
+              styles.songCard,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+              },
+            ]}
             activeOpacity={0.8}
             onPress={() => setSelectedHymnId(item.id)}
           >
@@ -59,8 +79,12 @@ export default function SongsScreen() {
               <Text style={styles.badgeText}>{item.number}</Text>
             </View>
             <View style={styles.songInfo}>
-              <Text style={[styles.songTitle, { color: colors.text }]}>{item.title}</Text>
-              <Text style={[styles.songSource, { color: colors.text }]}>{item.sourceBook}</Text>
+              <Text style={[styles.songTitle, { color: colors.text }]}>
+                {item.title}
+              </Text>
+              <Text style={[styles.songSource, { color: colors.text }]}>
+                {item.sourceBook}
+              </Text>
             </View>
           </TouchableOpacity>
         )}
@@ -82,12 +106,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: "800",
     paddingHorizontal: 24,
     marginBottom: 16,
   },
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -96,7 +120,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderBottomColor: "transparent",
   },
   tabText: {
     fontSize: 14,
@@ -106,8 +130,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   songCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -117,13 +141,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 16,
   },
   badgeText: {
-    color: '#000000',
-    fontWeight: '700',
+    color: "#000000",
+    fontWeight: "700",
     fontSize: 14,
   },
   songInfo: {
@@ -131,7 +155,7 @@ const styles = StyleSheet.create({
   },
   songTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 2,
   },
   songSource: {
@@ -149,12 +173,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#262626',
+    backgroundColor: "#262626",
     marginLeft: 8,
   },
   detailsBtnText: {
-    color: '#94A3B8',
+    color: "#94A3B8",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

@@ -1,33 +1,40 @@
-import AdaptiveCard from '@/src/components/adaptive/AdaptiveCard';
-import AdaptiveChip from '@/src/components/adaptive/AdaptiveChip';
-import HymnViewerModal from '@/src/components/HymnViewerModal';
-import { useBeholdTheme } from '@/src/context/ThemeContext';
-import { LDS_MUSIC_DATABASE } from '@/src/data/musicData';
-import { audioEngine } from '@/src/services/audioEngine';
-import type { Song } from '@/src/types/music';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import AdaptiveCard from "@/src/components/adaptive/AdaptiveCard";
+import AdaptiveChip from "@/src/components/adaptive/AdaptiveChip";
+import HymnViewerModal from "@/src/components/HymnViewerModal";
+import { useBeholdTheme } from "@/src/context/ThemeContext";
+import { LDS_MUSIC_DATABASE } from "@/src/data/musicData";
+import { audioEngine } from "@/src/services/audioEngine";
 import {
-  AppState,
-  FlatList,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getElevation, heights, interaction, radius, spacing, typography } from '@/src/theme/platformDesign';
+    getElevation,
+    heights,
+    interaction,
+    radius,
+    spacing,
+    typography,
+} from "@/src/theme/platformDesign";
+import type { Song } from "@/src/types/music";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import {
+    AppState,
+    FlatList,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    useWindowDimensions,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const isIOS = Platform.OS === 'ios';
+const isIOS = Platform.OS === "ios";
 
 const CATEGORY_TABS = [
-  { key: 'hymn' as const, label: 'Hymns' },
-  { key: 'children' as const, label: 'Children' },
-  { key: 'youth' as const, label: 'Youth' },
+  { key: "hymn" as const, label: "Hymns" },
+  { key: "children" as const, label: "Children" },
+  { key: "youth" as const, label: "Youth" },
 ];
 
 export default function DashboardScreen() {
@@ -36,15 +43,17 @@ export default function DashboardScreen() {
   const { colors } = useBeholdTheme();
   const isLargeScreenDisplay = width > 600;
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'hymn' | 'children' | 'youth'>('hymn');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"hymn" | "children" | "youth">(
+    "hymn",
+  );
   const [selectedHymnId, setSelectedHymnId] = useState<string | null>(null);
 
   useEffect(() => {
     audioEngine.initializeBeholdAudioConfiguration();
 
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'inactive' || nextAppState === 'background') {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "inactive" || nextAppState === "background") {
         audioEngine.safelyTeardownActiveAudioPlayback();
       }
     });
@@ -59,7 +68,7 @@ export default function DashboardScreen() {
 
     return LDS_MUSIC_DATABASE.filter((song) => {
       const matchesTab = song.category === activeTab;
-      const bookStr = song.book || song.sourceBook || '';
+      const bookStr = song.book || song.sourceBook || "";
       const matchesSearch =
         song.title.toLowerCase().includes(query) ||
         song.number.toString().includes(query) ||
@@ -80,12 +89,16 @@ export default function DashboardScreen() {
         borderColor={colors.border}
         style={{
           ...styles.songCard,
-          ...(!hasSheetMusic || !hasTargetNotes ? styles.songCardPending : undefined),
+          ...(!hasSheetMusic || !hasTargetNotes
+            ? styles.songCardPending
+            : undefined),
         }}
       >
         <View style={styles.songCardContent}>
           {/* Number Badge */}
-          <View style={[styles.songNumberBadge, { backgroundColor: colors.accent }]}>
+          <View
+            style={[styles.songNumberBadge, { backgroundColor: colors.accent }]}
+          >
             <Text style={styles.songNumberText}>{item.number}</Text>
           </View>
 
@@ -94,7 +107,12 @@ export default function DashboardScreen() {
             <Text style={[typography.titleSmall, { color: colors.text }]}>
               {item.title}
             </Text>
-            <Text style={[typography.caption, { color: colors.onSurfaceVariant, marginTop: 2 }]}>
+            <Text
+              style={[
+                typography.caption,
+                { color: colors.onSurfaceVariant, marginTop: 2 },
+              ]}
+            >
               {item.sourceBook}
             </Text>
 
@@ -107,7 +125,7 @@ export default function DashboardScreen() {
                 style={styles.featureBadge}
               />
               <AdaptiveChip
-                label={hasSheetMusic ? 'Dual-Clef' : 'No sheet'}
+                label={hasSheetMusic ? "Dual-Clef" : "No sheet"}
                 selected={hasSheetMusic}
                 selectedColor="#163f2d"
                 selectedTextColor="#E5E5E5"
@@ -123,11 +141,15 @@ export default function DashboardScreen() {
             onPress={(e) => {
               e.stopPropagation();
               router.push({
-                pathname: '/song-details',
+                pathname: "/song-details",
                 params: { id: item.id },
               });
             }}
-            android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: false } : undefined}
+            android_ripple={
+              interaction.useRipple
+                ? { color: "rgba(255,255,255,0.1)", borderless: false }
+                : undefined
+            }
             style={({ pressed }) => [
               styles.detailsBtn,
               { backgroundColor: colors.surfaceContainerHigh },
@@ -135,7 +157,9 @@ export default function DashboardScreen() {
             ]}
             accessibilityLabel="Song Details"
           >
-            <Text style={[typography.labelChip, { color: colors.onSurfaceVariant }]}>
+            <Text
+              style={[typography.labelChip, { color: colors.onSurfaceVariant }]}
+            >
               Details ›
             </Text>
           </Pressable>
@@ -145,17 +169,23 @@ export default function DashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* ── Header with Category Tabs & Search ─────────────────────────────── */}
-      <View style={[
-        styles.header,
-        {
-          backgroundColor: isIOS ? colors.background : colors.surfaceContainer,
-          borderBottomWidth: isIOS ? 0.5 : 0,
-          borderBottomColor: colors.border,
-          ...getElevation(isIOS ? 0 : 1),
-        },
-      ]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: isIOS
+              ? colors.background
+              : colors.surfaceContainer,
+            borderBottomWidth: isIOS ? 0.5 : 0,
+            borderBottomColor: colors.border,
+            ...getElevation(isIOS ? 0 : 1),
+          },
+        ]}
+      >
         {/* Category Tab Chips */}
         <View style={styles.tabBar}>
           {CATEGORY_TABS.map((tab) => (
@@ -172,16 +202,18 @@ export default function DashboardScreen() {
         </View>
 
         {/* Search Bar */}
-        <View style={[
-          styles.searchBarWrap,
-          {
-            backgroundColor: colors.surfaceContainerHigh,
-            borderRadius: isIOS ? radius.small : radius.pill,
-            height: heights.searchBar,
-          },
-        ]}>
+        <View
+          style={[
+            styles.searchBarWrap,
+            {
+              backgroundColor: colors.surfaceContainerHigh,
+              borderRadius: isIOS ? radius.small : radius.pill,
+              height: heights.searchBar,
+            },
+          ]}
+        >
           <Ionicons
-            name={(isIOS ? 'search-outline' : 'search-sharp') as any}
+            name={(isIOS ? "search-outline" : "search-sharp") as any}
             size={18}
             color={colors.onSurfaceVariant}
             style={{ marginLeft: isIOS ? 8 : 12, marginRight: 8 }}
@@ -204,7 +236,7 @@ export default function DashboardScreen() {
         renderItem={renderSongItem}
         contentContainerStyle={styles.listContent}
         numColumns={isLargeScreenDisplay ? 3 : 1}
-        key={isLargeScreenDisplay ? 'grid-3-col' : 'list-1-col'}
+        key={isLargeScreenDisplay ? "grid-3-col" : "list-1-col"}
       />
 
       {/* Fullscreen Interactive Sheet Music Modal */}
@@ -225,7 +257,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: spacing.md,
     gap: 8,
   },
@@ -233,13 +265,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchBarWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
   },
   searchInput: {
     flex: 1,
-    height: '100%',
+    height: "100%",
     fontSize: isIOS ? 17 : 16,
     paddingHorizontal: 4,
     paddingRight: 12,
@@ -255,31 +287,31 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   songCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   songNumberBadge: {
     width: isIOS ? 40 : 42,
     height: isIOS ? 40 : 42,
     borderRadius: isIOS ? 10 : 21,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: spacing.md,
   },
   songNumberText: {
-    color: '#0F172A',
-    fontWeight: '900',
+    color: "#0F172A",
+    fontWeight: "900",
     fontSize: 16,
   },
   songInfo: {
     flex: 1,
   },
   badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 8,
     gap: 6,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   featureBadge: {
     height: 24,
@@ -290,6 +322,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: isIOS ? radius.small : 8,
     marginLeft: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });

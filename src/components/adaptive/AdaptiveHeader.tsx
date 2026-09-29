@@ -3,13 +3,27 @@
  * iOS: Standard iOS navigation bar (44px), back chevron, thin bottom hairline, centered title
  * Android: MD3 top app bar (64px), arrow-back, no border (uses elevation), left-aligned title
  */
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { useAdaptiveFeedback } from '../../hooks/useAdaptiveFeedback';
-import { getElevation, heights, interaction, navigation, radius, typography } from '../../theme/platformDesign';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import {
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
+    ViewStyle,
+} from "react-native";
+import { useAdaptiveFeedback } from "../../hooks/useAdaptiveFeedback";
+import {
+    getElevation,
+    heights,
+    interaction,
+    navigation,
+    radius,
+    typography,
+} from "../../theme/platformDesign";
 
-const isIOS = Platform.OS === 'ios';
+const isIOS = Platform.OS === "ios";
 
 export interface AdaptiveHeaderProps {
   title: string;
@@ -30,16 +44,16 @@ export default function AdaptiveHeader({
   rightElement,
   centerElement,
   backgroundColor,
-  textColor = '#FFFFFF',
-  borderColor = '#334155',
+  textColor = "#FFFFFF",
+  borderColor = "#334155",
   style,
 }: AdaptiveHeaderProps) {
   const { triggerFeedback } = useAdaptiveFeedback();
 
-  const headerBg = backgroundColor ?? (isIOS ? '#000000' : '#1E293B');
+  const headerBg = backgroundColor ?? (isIOS ? "#000000" : "#1E293B");
 
   const handleBack = () => {
-    triggerFeedback('light');
+    triggerFeedback("light");
     onBack?.();
   };
 
@@ -66,7 +80,11 @@ export default function AdaptiveHeader({
             accessibilityLabel="Go back"
             android_ripple={
               interaction.useRipple
-                ? { color: 'rgba(255,255,255,0.15)', borderless: true, radius: 20 }
+                ? {
+                    color: "rgba(255,255,255,0.15)",
+                    borderless: true,
+                    radius: 20,
+                  }
                 : undefined
             }
             style={({ pressed }) => [
@@ -116,29 +134,27 @@ export default function AdaptiveHeader({
       </View>
 
       {/* Right: Action elements */}
-      <View style={styles.rightSlot}>
-        {rightElement}
-      </View>
+      <View style={styles.rightSlot}>{rightElement}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: isIOS ? 8 : 4,
     zIndex: 20,
   },
   leftSlot: {
     minWidth: isIOS ? 70 : 48,
-    alignItems: isIOS ? 'flex-start' : 'center',
-    justifyContent: 'center',
+    alignItems: isIOS ? "flex-start" : "center",
+    justifyContent: "center",
   },
   centerSlot: {
     flex: 1,
-    alignItems: isIOS ? 'center' : 'flex-start',
-    justifyContent: 'center',
+    alignItems: isIOS ? "center" : "flex-start",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
   centerSlotAndroid: {
@@ -147,37 +163,37 @@ const styles = StyleSheet.create({
   },
   rightSlot: {
     minWidth: isIOS ? 70 : 48,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: "flex-end",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 4,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: isIOS ? 8 : 12,
     paddingVertical: 6,
     borderRadius: radius.pill,
   },
   iosBackLabel: {
     fontSize: 17,
-    fontWeight: '400',
+    fontWeight: "400",
     marginLeft: -2,
   },
   centerTextGroup: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   leftTextGroup: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   iosTitleText: {
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: -0.41,
   },
   androidTitleText: {
     fontSize: 22,
-    fontWeight: '400',
+    fontWeight: "400",
     letterSpacing: 0,
   },
 });

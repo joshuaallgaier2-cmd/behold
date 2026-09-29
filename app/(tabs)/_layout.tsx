@@ -1,17 +1,38 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Slot, usePathname, useRouter } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { LiquidGlassView } from '../../src/components/LiquidGlassView';
-import { ThemeProvider, useBeholdTheme } from '../../src/context/ThemeContext';
-import { heights, interaction, getElevation } from '../../src/theme/platformDesign';
+import { Ionicons } from "@expo/vector-icons";
+import { Slot, usePathname, useRouter } from "expo-router";
+import {
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
+    useWindowDimensions,
+} from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { LiquidGlassView } from "../../src/components/LiquidGlassView";
+import { ThemeProvider, useBeholdTheme } from "../../src/context/ThemeContext";
+import {
+    getElevation,
+    heights,
+    interaction,
+} from "../../src/theme/platformDesign";
 
-const isIOS = Platform.OS === 'ios';
+const isIOS = Platform.OS === "ios";
 
 const NAV_ITEMS = [
-  { id: 'home', label: 'Home', route: '/' as const, icon: 'home' as const },
-  { id: 'songs', label: 'Songs', route: '/songs' as const, icon: 'musical-notes' as const },
-  { id: 'account', label: 'Account', route: '/account' as const, icon: 'person' as const },
+  { id: "home", label: "Home", route: "/" as const, icon: "home" as const },
+  {
+    id: "songs",
+    label: "Songs",
+    route: "/songs" as const,
+    icon: "musical-notes" as const,
+  },
+  {
+    id: "account",
+    label: "Account",
+    route: "/account" as const,
+    icon: "person" as const,
+  },
 ];
 
 function NavigationLayoutContent() {
@@ -23,11 +44,15 @@ function NavigationLayoutContent() {
   const isLandscape = width > height;
 
   return (
-    <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
+    <View
+      style={[styles.rootContainer, { backgroundColor: colors.background }]}
+    >
       {isLandscape ? (
         <View style={styles.landscapeWrapper}>
           <LiquidGlassView style={styles.sidebar}>
-            <Text style={[styles.brandText, { color: colors.accent }]}>BEHOLD</Text>
+            <Text style={[styles.brandText, { color: colors.accent }]}>
+              BEHOLD
+            </Text>
             <View style={styles.sidebarNavGroup}>
               {NAV_ITEMS.map((item) => {
                 const isActive = pathname === item.route;
@@ -37,23 +62,47 @@ function NavigationLayoutContent() {
                     onPress={() => router.push(item.route)}
                     android_ripple={
                       interaction.useRipple
-                        ? { color: 'rgba(255,255,255,0.08)', borderless: false }
+                        ? { color: "rgba(255,255,255,0.08)", borderless: false }
                         : undefined
                     }
                     style={({ pressed }) => [
                       styles.sidebarNavItem,
-                      isActive && { backgroundColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 8 },
+                      isActive && {
+                        backgroundColor: "rgba(255, 255, 255, 0.08)",
+                        borderRadius: 8,
+                      },
                       isIOS && pressed && { opacity: interaction.pressOpacity },
                     ]}
                   >
-                    <View style={[styles.activeIndicator, { backgroundColor: isActive ? colors.accent : 'transparent' }]} />
+                    <View
+                      style={[
+                        styles.activeIndicator,
+                        {
+                          backgroundColor: isActive
+                            ? colors.accent
+                            : "transparent",
+                        },
+                      ]}
+                    />
                     <Ionicons
-                      name={(isIOS ? `${item.icon}-outline` : `${item.icon}-sharp`) as any}
+                      name={
+                        (isIOS
+                          ? `${item.icon}-outline`
+                          : `${item.icon}-sharp`) as any
+                      }
                       size={20}
                       color={isActive ? colors.accent : colors.onSurfaceVariant}
                       style={{ marginRight: 12 }}
                     />
-                    <Text style={[styles.navText, { color: colors.text, fontWeight: isActive ? '700' : '400' }]}>
+                    <Text
+                      style={[
+                        styles.navText,
+                        {
+                          color: colors.text,
+                          fontWeight: isActive ? "700" : "400",
+                        },
+                      ]}
+                    >
                       {item.label}
                     </Text>
                   </Pressable>
@@ -77,16 +126,22 @@ function NavigationLayoutContent() {
               {
                 height: heights.bottomNav + (isIOS ? 15 : 0),
                 paddingBottom: isIOS ? 15 : 0,
-                backgroundColor: isIOS ? 'rgba(30, 30, 30, 0.95)' : colors.surfaceContainer,
+                backgroundColor: isIOS
+                  ? "rgba(30, 30, 30, 0.95)"
+                  : colors.surfaceContainer,
                 borderTopWidth: isIOS ? 0.5 : 0,
-                borderTopColor: isIOS ? 'rgba(255,255,255,0.15)' : 'transparent',
+                borderTopColor: isIOS
+                  ? "rgba(255,255,255,0.15)"
+                  : "transparent",
                 ...getElevation(isIOS ? 0 : 2),
               },
             ]}
           >
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.route;
-              const iconName = (isIOS ? `${item.icon}-outline` : `${item.icon}-sharp`) as any;
+              const iconName = (
+                isIOS ? `${item.icon}-outline` : `${item.icon}-sharp`
+              ) as any;
 
               return (
                 <Pressable
@@ -94,7 +149,11 @@ function NavigationLayoutContent() {
                   onPress={() => router.push(item.route)}
                   android_ripple={
                     interaction.useRipple
-                      ? { color: `${colors.accent}20`, borderless: true, radius: 28 }
+                      ? {
+                          color: `${colors.accent}20`,
+                          borderless: true,
+                          radius: 28,
+                        }
                       : undefined
                   }
                   style={({ pressed }) => [
@@ -107,7 +166,12 @@ function NavigationLayoutContent() {
                 >
                   {/* MD3 Active Indicator Pill (Android only) */}
                   {!isIOS && isActive && (
-                    <View style={[styles.md3ActivePill, { backgroundColor: `${colors.accent}30` }]} />
+                    <View
+                      style={[
+                        styles.md3ActivePill,
+                        { backgroundColor: `${colors.accent}30` },
+                      ]}
+                    />
                   )}
                   <Ionicons
                     name={isActive ? (item.icon as any) : iconName}
@@ -118,8 +182,10 @@ function NavigationLayoutContent() {
                     style={[
                       isIOS ? styles.iosTabLabel : styles.md3TabLabel,
                       {
-                        color: isActive ? colors.accent : colors.onSurfaceVariant,
-                        fontWeight: isActive ? '600' : '400',
+                        color: isActive
+                          ? colors.accent
+                          : colors.onSurfaceVariant,
+                        fontWeight: isActive ? "600" : "400",
                       },
                     ]}
                   >
@@ -130,7 +196,11 @@ function NavigationLayoutContent() {
                     <View
                       style={[
                         styles.iosActiveDot,
-                        { backgroundColor: isActive ? colors.accent : 'transparent' },
+                        {
+                          backgroundColor: isActive
+                            ? colors.accent
+                            : "transparent",
+                        },
                       ]}
                     />
                   )}
@@ -160,35 +230,35 @@ const styles = StyleSheet.create({
   },
   landscapeWrapper: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   portraitWrapper: {
     flex: 1,
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   sidebar: {
     width: 240,
-    height: '100%',
+    height: "100%",
     paddingTop: 40,
     paddingHorizontal: 16,
   },
   brandText: {
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 1.5,
     marginBottom: 40,
-    textAlign: 'center',
+    textAlign: "center",
   },
   sidebarNavGroup: {
     flex: 1,
   },
   sidebarNavItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginVertical: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   activeIndicator: {
     width: 4,
@@ -203,20 +273,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomTabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
   },
   bottomTabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: isIOS ? 4 : 12,
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   // MD3: Active indicator pill behind the icon (Android)
   md3ActivePill: {
-    position: 'absolute',
+    position: "absolute",
     top: isIOS ? 4 : 8,
     width: 64,
     height: 32,
@@ -233,7 +303,7 @@ const styles = StyleSheet.create({
   md3TabLabel: {
     fontSize: 12,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: "500",
     letterSpacing: 0.5,
   },
   // iOS: Active dot indicator below label

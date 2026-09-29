@@ -1,5 +1,11 @@
 // src/components/EarTrainingGame.tsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import {
     Animated,
     Easing,
@@ -7,15 +13,15 @@ import {
     Text,
     TouchableOpacity,
     View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────
 
-type IntervalName = 'Unison' | 'Minor 3rd' | 'Perfect 5th' | 'Octave';
-type Level = 'Beginner' | 'Intermediate' | 'Advanced';
+type IntervalName = "Unison" | "Minor 3rd" | "Perfect 5th" | "Octave";
+type Level = "Beginner" | "Intermediate" | "Advanced";
 
 interface IntervalDefinition {
   name: IntervalName;
@@ -43,9 +49,14 @@ interface PitchDetectionResult {
 
 const pitchService = {
   /** Plays a short reference tone at the given frequency (Hz). */
-  async playGuideTone(frequency: number, durationMs: number = 900): Promise<void> {
+  async playGuideTone(
+    frequency: number,
+    durationMs: number = 900,
+  ): Promise<void> {
     // e.g. bridge to expo-audio / react-native-sound oscillator synth
-    console.log(`[guideSynth] playing ${frequency.toFixed(2)}Hz for ${durationMs}ms`);
+    console.log(
+      `[guideSynth] playing ${frequency.toFixed(2)}Hz for ${durationMs}ms`,
+    );
     return new Promise((resolve) => setTimeout(resolve, durationMs));
   },
 
@@ -71,7 +82,20 @@ const pitchService = {
 // Music theory helpers
 // ─────────────────────────────────────────────────────────────────────────
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const NOTE_NAMES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
+];
 const A4_FREQ = 440;
 const A4_MIDI = 69;
 
@@ -94,19 +118,19 @@ function centsDifference(freq: number, targetFreq: number): number {
 
 const INTERVALS_BY_LEVEL: Record<Level, IntervalDefinition[]> = {
   Beginner: [
-    { name: 'Unison', semitones: 0 },
-    { name: 'Octave', semitones: 12 },
+    { name: "Unison", semitones: 0 },
+    { name: "Octave", semitones: 12 },
   ],
   Intermediate: [
-    { name: 'Unison', semitones: 0 },
-    { name: 'Minor 3rd', semitones: 3 },
-    { name: 'Octave', semitones: 12 },
+    { name: "Unison", semitones: 0 },
+    { name: "Minor 3rd", semitones: 3 },
+    { name: "Octave", semitones: 12 },
   ],
   Advanced: [
-    { name: 'Unison', semitones: 0 },
-    { name: 'Minor 3rd', semitones: 3 },
-    { name: 'Perfect 5th', semitones: 7 },
-    { name: 'Octave', semitones: 12 },
+    { name: "Unison", semitones: 0 },
+    { name: "Minor 3rd", semitones: 3 },
+    { name: "Perfect 5th", semitones: 7 },
+    { name: "Octave", semitones: 12 },
   ],
 };
 
@@ -117,7 +141,9 @@ const ROOT_MIDI_MAX = 71;
 function generateQuestion(level: Level): Question {
   const pool = INTERVALS_BY_LEVEL[level];
   const interval = pool[Math.floor(Math.random() * pool.length)];
-  const rootMidi = ROOT_MIDI_MIN + Math.floor(Math.random() * (ROOT_MIDI_MAX - ROOT_MIDI_MIN + 1));
+  const rootMidi =
+    ROOT_MIDI_MIN +
+    Math.floor(Math.random() * (ROOT_MIDI_MAX - ROOT_MIDI_MIN + 1));
   const targetMidi = rootMidi + interval.semitones;
 
   return {
@@ -144,14 +170,18 @@ const GAUGE_MAX_CENTS = 60; // needle clamps at ±60 cents
 // ─────────────────────────────────────────────────────────────────────────
 
 const EarTrainingGame: React.FC = () => {
-  const [level, setLevel] = useState<Level>('Beginner');
-  const [question, setQuestion] = useState<Question>(() => generateQuestion('Beginner'));
+  const [level, setLevel] = useState<Level>("Beginner");
+  const [question, setQuestion] = useState<Question>(() =>
+    generateQuestion("Beginner"),
+  );
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME_LIMIT_S);
   const [isListening, setIsListening] = useState(false);
   const [liveCents, setLiveCents] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<'idle' | 'correct' | 'timeout'>('idle');
+  const [feedback, setFeedback] = useState<"idle" | "correct" | "timeout">(
+    "idle",
+  );
   const [isPlayingGuide, setIsPlayingGuide] = useState(false);
 
   const [needleAnim] = useState(() => new Animated.Value(0));
@@ -170,7 +200,10 @@ const EarTrainingGame: React.FC = () => {
     setIsListening(false);
   }, []);
 
-  const streakMultiplier = Math.min(1 + Math.floor(streak / 3), MAX_STREAK_MULTIPLIER);
+  const streakMultiplier = Math.min(
+    1 + Math.floor(streak / 3),
+    MAX_STREAK_MULTIPLIER,
+  );
 
   // ── Question lifecycle ──────────────────────────────────────────────
 
@@ -181,12 +214,12 @@ const EarTrainingGame: React.FC = () => {
       holdProgressRef.current = 0;
       setHoldProgress(0);
       setLiveCents(null);
-      setFeedback('idle');
+      setFeedback("idle");
       setTimeLeft(QUESTION_TIME_LIMIT_S);
       setQuestion(generateQuestion(forLevel));
       needleAnim.setValue(0);
     },
-    [level, needleAnim]
+    [level, needleAnim],
   );
 
   const handleLevelChange = (newLevel: Level) => {
@@ -213,10 +246,10 @@ const EarTrainingGame: React.FC = () => {
   // ── Countdown timer ─────────────────────────────────────────────────
 
   useEffect(() => {
-    if (feedback !== 'idle') return;
+    if (feedback !== "idle") return;
     const timer = setTimeout(() => {
       if (timeLeft <= 1) {
-        setFeedback('timeout');
+        setFeedback("timeout");
         setStreak(0);
         stopListening();
       } else {
@@ -243,7 +276,10 @@ const EarTrainingGame: React.FC = () => {
       setLiveCents(cents);
 
       // Animate needle: clamp to gauge range and normalize to -1..1
-      const clamped = Math.max(-GAUGE_MAX_CENTS, Math.min(GAUGE_MAX_CENTS, cents));
+      const clamped = Math.max(
+        -GAUGE_MAX_CENTS,
+        Math.min(GAUGE_MAX_CENTS, cents),
+      );
       Animated.timing(needleAnim, {
         toValue: clamped / GAUGE_MAX_CENTS,
         duration: 80,
@@ -270,7 +306,7 @@ const EarTrainingGame: React.FC = () => {
 
           setScore((s) => s + points);
           setStreak((s) => s + 1);
-          setFeedback('correct');
+          setFeedback("correct");
           stopListening();
         }
       } else {
@@ -279,7 +315,13 @@ const EarTrainingGame: React.FC = () => {
         setHoldProgress(0);
       }
     },
-    [question.targetFreq, needleAnim, timeLeft, streakMultiplier, stopListening]
+    [
+      question.targetFreq,
+      needleAnim,
+      timeLeft,
+      streakMultiplier,
+      stopListening,
+    ],
   );
 
   const startListening = useCallback(() => {
@@ -296,12 +338,12 @@ const EarTrainingGame: React.FC = () => {
 
   const needleRotation = needleAnim.interpolate({
     inputRange: [-1, 1],
-    outputRange: ['-60deg', '60deg'],
+    outputRange: ["-60deg", "60deg"],
   });
 
   const gaugeColor = useMemo(() => {
-    if (liveCents === null) return '#8a8a8a';
-    return Math.abs(liveCents) <= CENTS_TOLERANCE ? '#33cc66' : '#e0523d';
+    if (liveCents === null) return "#8a8a8a";
+    return Math.abs(liveCents) <= CENTS_TOLERANCE ? "#33cc66" : "#e0523d";
   }, [liveCents]);
 
   // ── Render ───────────────────────────────────────────────────────────
@@ -310,13 +352,17 @@ const EarTrainingGame: React.FC = () => {
     <SafeAreaView style={styles.container}>
       {/* Level tabs */}
       <View style={styles.tabRow}>
-        {(['Beginner', 'Intermediate', 'Advanced'] as Level[]).map((lvl) => (
+        {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((lvl) => (
           <TouchableOpacity
             key={lvl}
             style={[styles.tab, level === lvl && styles.tabActive]}
             onPress={() => handleLevelChange(lvl)}
           >
-            <Text style={[styles.tabText, level === lvl && styles.tabTextActive]}>{lvl}</Text>
+            <Text
+              style={[styles.tabText, level === lvl && styles.tabTextActive]}
+            >
+              {lvl}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -330,12 +376,15 @@ const EarTrainingGame: React.FC = () => {
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>Streak</Text>
           <Text style={styles.statValue}>
-            {streak} <Text style={styles.multiplierText}>x{streakMultiplier}</Text>
+            {streak}{" "}
+            <Text style={styles.multiplierText}>x{streakMultiplier}</Text>
           </Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statLabel}>Time</Text>
-          <Text style={[styles.statValue, timeLeft <= 5 && styles.statValueDanger]}>
+          <Text
+            style={[styles.statValue, timeLeft <= 5 && styles.statValueDanger]}
+          >
             {timeLeft}s
           </Text>
         </View>
@@ -354,7 +403,7 @@ const EarTrainingGame: React.FC = () => {
           disabled={isPlayingGuide}
         >
           <Text style={styles.guideButtonText}>
-            {isPlayingGuide ? 'Playing…' : '🔊 Replay Root Note'}
+            {isPlayingGuide ? "Playing…" : "🔊 Replay Root Note"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -365,31 +414,40 @@ const EarTrainingGame: React.FC = () => {
           <Animated.View
             style={[
               styles.needle,
-              { backgroundColor: gaugeColor, transform: [{ rotate: needleRotation }] },
+              {
+                backgroundColor: gaugeColor,
+                transform: [{ rotate: needleRotation }],
+              },
             ]}
           />
           <View style={styles.gaugeCenterDot} />
         </View>
         <Text style={styles.centsLabel}>
-          {liveCents === null ? '— cents' : `${liveCents > 0 ? '+' : ''}${liveCents.toFixed(0)} cents`}
+          {liveCents === null
+            ? "— cents"
+            : `${liveCents > 0 ? "+" : ""}${liveCents.toFixed(0)} cents`}
         </Text>
 
         {/* Hold progress bar */}
         <View style={styles.holdTrack}>
-          <View style={[styles.holdFill, { width: `${holdProgress * 100}%` }]} />
+          <View
+            style={[styles.holdFill, { width: `${holdProgress * 100}%` }]}
+          />
         </View>
         <Text style={styles.holdLabel}>Hold pitch steady to lock in</Text>
       </View>
 
       {/* Feedback banner */}
-      {feedback === 'correct' && (
+      {feedback === "correct" && (
         <View style={[styles.banner, styles.bannerSuccess]}>
           <Text style={styles.bannerText}>🎯 Nice! Pitch locked in.</Text>
         </View>
       )}
-      {feedback === 'timeout' && (
+      {feedback === "timeout" && (
         <View style={[styles.banner, styles.bannerFail]}>
-          <Text style={styles.bannerText}>⏱ Time&apos;s up — streak reset.</Text>
+          <Text style={styles.bannerText}>
+            ⏱ Time&apos;s up — streak reset.
+          </Text>
         </View>
       )}
 
@@ -398,10 +456,10 @@ const EarTrainingGame: React.FC = () => {
         <TouchableOpacity
           style={[styles.micButton, isListening && styles.micButtonActive]}
           onPress={isListening ? stopListening : startListening}
-          disabled={feedback !== 'idle'}
+          disabled={feedback !== "idle"}
         >
           <Text style={styles.micButtonText}>
-            {isListening ? '🎤 Listening…' : '🎤 Start Singing'}
+            {isListening ? "🎤 Listening…" : "🎤 Start Singing"}
           </Text>
         </TouchableOpacity>
 
@@ -426,13 +484,13 @@ const EarTrainingGame: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f1115',
+    backgroundColor: "#0f1115",
     paddingHorizontal: 16,
     paddingTop: 12,
   },
   tabRow: {
-    flexDirection: 'row',
-    backgroundColor: '#1a1d24',
+    flexDirection: "row",
+    backgroundColor: "#1a1d24",
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
@@ -441,84 +499,84 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 9,
-    alignItems: 'center',
+    alignItems: "center",
   },
   tabActive: {
-    backgroundColor: '#3d6dff',
+    backgroundColor: "#3d6dff",
   },
   tabText: {
-    color: '#8a8f9a',
-    fontWeight: '600',
+    color: "#8a8f9a",
+    fontWeight: "600",
     fontSize: 13,
   },
   tabTextActive: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
   statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 16,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#1a1d24',
+    backgroundColor: "#1a1d24",
     marginHorizontal: 4,
     borderRadius: 12,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statLabel: {
-    color: '#8a8f9a',
+    color: "#8a8f9a",
     fontSize: 11,
     marginBottom: 4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   statValue: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   statValueDanger: {
-    color: '#e0523d',
+    color: "#e0523d",
   },
   multiplierText: {
     fontSize: 14,
-    color: '#ffcc4d',
+    color: "#ffcc4d",
   },
   promptCard: {
-    backgroundColor: '#1a1d24',
+    backgroundColor: "#1a1d24",
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 16,
   },
   promptText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
   },
   promptTarget: {
-    color: '#3d6dff',
+    color: "#3d6dff",
     fontSize: 15,
     marginTop: 6,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   guideButton: {
     marginTop: 14,
-    backgroundColor: '#262b35',
+    backgroundColor: "#262b35",
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 10,
   },
   guideButtonText: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
     fontSize: 13,
   },
   gaugeContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 16,
   },
   gaugeArc: {
@@ -526,97 +584,97 @@ const styles = StyleSheet.create({
     height: 90,
     borderTopLeftRadius: 160,
     borderTopRightRadius: 160,
-    backgroundColor: '#1a1d24',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    overflow: 'hidden',
+    backgroundColor: "#1a1d24",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    overflow: "hidden",
     marginBottom: 8,
   },
   needle: {
     width: 4,
     height: 70,
     borderRadius: 2,
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
   },
   gaugeCenterDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#8a8f9a',
-    position: 'absolute',
+    backgroundColor: "#8a8f9a",
+    position: "absolute",
     bottom: -5,
   },
   centsLabel: {
-    color: '#c7ccd6',
+    color: "#c7ccd6",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 10,
   },
   holdTrack: {
-    width: '80%',
+    width: "80%",
     height: 8,
-    backgroundColor: '#262b35',
+    backgroundColor: "#262b35",
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   holdFill: {
-    height: '100%',
-    backgroundColor: '#33cc66',
+    height: "100%",
+    backgroundColor: "#33cc66",
   },
   holdLabel: {
-    color: '#8a8f9a',
+    color: "#8a8f9a",
     fontSize: 11,
     marginTop: 6,
   },
   banner: {
     borderRadius: 10,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
   },
   bannerSuccess: {
-    backgroundColor: '#1e3a2c',
+    backgroundColor: "#1e3a2c",
   },
   bannerFail: {
-    backgroundColor: '#3a1e1e',
+    backgroundColor: "#3a1e1e",
   },
   bannerText: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
   },
   controlsRow: {
-    flexDirection: 'row',
-    marginTop: 'auto',
+    flexDirection: "row",
+    marginTop: "auto",
     marginBottom: 20,
   },
   micButton: {
     flex: 1,
-    backgroundColor: '#3d6dff',
+    backgroundColor: "#3d6dff",
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 8,
   },
   micButtonActive: {
-    backgroundColor: '#e0523d',
+    backgroundColor: "#e0523d",
   },
   micButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: "#ffffff",
+    fontWeight: "700",
     fontSize: 14,
   },
   nextButton: {
     flex: 1,
-    backgroundColor: '#262b35',
+    backgroundColor: "#262b35",
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginLeft: 8,
   },
   nextButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: "#ffffff",
+    fontWeight: "700",
     fontSize: 14,
   },
 });

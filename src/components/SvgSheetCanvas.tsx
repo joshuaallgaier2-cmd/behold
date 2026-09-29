@@ -14,13 +14,11 @@ import Svg, {
     Line,
     Path,
     Rect,
-    Text
+    Text,
 } from "react-native-svg";
-import {
-  BRAVURA_GLYPHS,
-} from "../utils/musicNotationUtils";
+import { BRAVURA_GLYPHS } from "../utils/musicNotationUtils";
 import StaffTimeSignature, {
-  getTimeSignatureStaffWidth,
+    getTimeSignatureStaffWidth,
 } from "./StaffTimeSignature";
 
 export interface TargetNote {

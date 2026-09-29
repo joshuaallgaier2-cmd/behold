@@ -1,11 +1,11 @@
 import {
-  AudioModule,
-  type AudioRecorder,
-  type NativeAudioModule,
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-} from 'expo-audio';
+    AudioModule,
+    type AudioRecorder,
+    type NativeAudioModule,
+    RecordingPresets,
+    requestRecordingPermissionsAsync,
+    setAudioModeAsync,
+} from "expo-audio";
 
 const audioModule = AudioModule as NativeAudioModule;
 const { AudioRecorder: ExpoAudioRecorder } = audioModule;
@@ -13,7 +13,7 @@ const { AudioRecorder: ExpoAudioRecorder } = audioModule;
 const PITCH_RANGE_MIN_HZ = 60;
 const PITCH_RANGE_MAX_HZ = 2000;
 const NOISE_FLOOR_DB = -40;
-const YIN_THRESHOLD = 0.10; // Absolute threshold to prevent octave errors
+const YIN_THRESHOLD = 0.1; // Absolute threshold to prevent octave errors
 const CENT_SCALE = 1200.0;
 
 const PITCH_RECORDING_OPTIONS = {
@@ -64,7 +64,12 @@ export function evaluatePitchMatch(
   targetHz: number,
   toleranceRatio: number = 0.05,
 ): boolean {
-  if (!Number.isFinite(detectedHz) || !Number.isFinite(targetHz) || detectedHz <= 0 || targetHz <= 0) {
+  if (
+    !Number.isFinite(detectedHz) ||
+    !Number.isFinite(targetHz) ||
+    detectedHz <= 0 ||
+    targetHz <= 0
+  ) {
     return false;
   }
 
@@ -75,10 +80,23 @@ export function evaluatePitchMatch(
 
 export function frequencyToPitchName(freqHz: number): string {
   if (!Number.isFinite(freqHz) || freqHz <= 0) {
-    return 'Unknown';
+    return "Unknown";
   }
 
-  const pitchNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const pitchNames = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
   const A4 = 440.0;
 
   const midiNote = Math.round(69 + 12 * Math.log2(freqHz / A4));
@@ -129,7 +147,9 @@ function computeDifferenceFunction(pcmData: Float32Array, tau: number): number {
  * Compute the cumulative normalized difference function d_t'(τ).
  * Prevents octave errors by normalizing with cumulative sum.
  */
-function computeNormalizedDifferenceFunction(pcmData: Float32Array): Float32Array {
+function computeNormalizedDifferenceFunction(
+  pcmData: Float32Array,
+): Float32Array {
   const maxLag = pcmData.length;
   const dPrime = new Float32Array(maxLag);
 
@@ -156,7 +176,11 @@ function computeNormalizedDifferenceFunction(pcmData: Float32Array): Float32Arra
  * Find the first local minimum in the normalized difference function
  * that falls below the YIN_THRESHOLD.
  */
-function findFirstMinimumBelowThreshold(dPrime: Float32Array, minLag: number, maxLag: number): number {
+function findFirstMinimumBelowThreshold(
+  dPrime: Float32Array,
+  minLag: number,
+  maxLag: number,
+): number {
   for (let tau = minLag; tau < maxLag && tau < dPrime.length; tau += 1) {
     if (dPrime[tau] < YIN_THRESHOLD) {
       // Check backward to ensure this is a local minimum
@@ -183,11 +207,11 @@ function findFirstMinimumBelowThreshold(dPrime: Float32Array, minLag: number, ma
  * Apply parabolic interpolation around a local minimum for sub-sample accuracy.
  * Returns refined lag with sub-sample precision.
  */
-function parabolicInterpolation(dPrime: Float32Array, centerTau: number): number {
-  if (
-    centerTau <= 0 ||
-    centerTau >= dPrime.length - 1
-  ) {
+function parabolicInterpolation(
+  dPrime: Float32Array,
+  centerTau: number,
+): number {
+  if (centerTau <= 0 || centerTau >= dPrime.length - 1) {
     return centerTau;
   }
 
@@ -208,7 +232,10 @@ function parabolicInterpolation(dPrime: Float32Array, centerTau: number): number
  * High-accuracy YIN/Autocorrelation pitch detection algorithm.
  * Returns detailed PitchFrame with frequency, confidence, and cents deviation.
  */
-export function detectPitchFrame(pcmData: Float32Array, sampleRate: number): PitchFrame | null {
+export function detectPitchFrame(
+  pcmData: Float32Array,
+  sampleRate: number,
+): PitchFrame | null {
   if (pcmData.length === 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) {
     return null;
   }
@@ -260,7 +287,10 @@ export function detectPitchFrame(pcmData: Float32Array, sampleRate: number): Pit
   };
 }
 
-export function detectPitchFromPCM(pcmData: Float32Array, sampleRate: number): number | null {
+export function detectPitchFromPCM(
+  pcmData: Float32Array,
+  sampleRate: number,
+): number | null {
   const frame = detectPitchFrame(pcmData, sampleRate);
   return frame ? frame.frequencyHz : null;
 }
@@ -273,7 +303,9 @@ export async function calibrateNoiseFloor(durationMs: number): Promise<number> {
   try {
     const hasPermission = await requestMicrophonePermissions();
     if (!hasPermission) {
-      console.warn('[PitchDetector] Cannot calibrate: microphone permission denied.');
+      console.warn(
+        "[PitchDetector] Cannot calibrate: microphone permission denied.",
+      );
       return calibratedNoiseFloorDb;
     }
 
@@ -286,7 +318,11 @@ export async function calibrateNoiseFloor(durationMs: number): Promise<number> {
     const calibrationInterval = setInterval(() => {
       try {
         const status = recording.getStatus();
-        if (status && typeof status.metering === 'number' && Number.isFinite(status.metering)) {
+        if (
+          status &&
+          typeof status.metering === "number" &&
+          Number.isFinite(status.metering)
+        ) {
           samples.push(Number(status.metering));
         }
       } catch {
@@ -307,13 +343,15 @@ export async function calibrateNoiseFloor(durationMs: number): Promise<number> {
       const avgNoiseFloor = samples.reduce((a, b) => a + b, 0) / samples.length;
       const newFloor = Math.max(-60, Math.min(-25, avgNoiseFloor - 5)); // Add 5dB safety margin
       calibratedNoiseFloorDb = newFloor;
-      console.log(`[PitchDetector] Calibrated noise floor: ${calibratedNoiseFloorDb.toFixed(1)} dB`);
+      console.log(
+        `[PitchDetector] Calibrated noise floor: ${calibratedNoiseFloorDb.toFixed(1)} dB`,
+      );
       return calibratedNoiseFloorDb;
     }
 
     return calibratedNoiseFloorDb;
   } catch (error: unknown) {
-    console.error('[PitchDetector] Noise floor calibration failed:', error);
+    console.error("[PitchDetector] Noise floor calibration failed:", error);
     return calibratedNoiseFloorDb;
   }
 }
@@ -321,7 +359,10 @@ export async function calibrateNoiseFloor(durationMs: number): Promise<number> {
 /**
  * Calculate target frequency after applying transposition in semitones.
  */
-export function applyTransposition(targetHz: number, semitones: number): number {
+export function applyTransposition(
+  targetHz: number,
+  semitones: number,
+): number {
   if (!Number.isFinite(targetHz) || targetHz <= 0) {
     return 0;
   }
@@ -345,7 +386,7 @@ export async function requestMicrophonePermissions(): Promise<boolean> {
     const { granted } = await requestRecordingPermissionsAsync();
 
     if (!granted) {
-      console.warn('[PitchDetector] Microphone permission denied.');
+      console.warn("[PitchDetector] Microphone permission denied.");
       return false;
     }
 
@@ -353,18 +394,20 @@ export async function requestMicrophonePermissions(): Promise<boolean> {
       allowsRecording: true,
       playsInSilentMode: true,
       shouldPlayInBackground: false,
-      interruptionMode: 'mixWithOthers',
-      interruptionModeAndroid: 'duckOthers',
+      interruptionMode: "mixWithOthers",
+      interruptionModeAndroid: "duckOthers",
     });
 
     return true;
   } catch (error: unknown) {
-    console.error('[PitchDetector] Failed to request permissions:', error);
+    console.error("[PitchDetector] Failed to request permissions:", error);
     return false;
   }
 }
 
-export async function safeCleanupRecording(recording: AudioRecorder | null): Promise<void> {
+export async function safeCleanupRecording(
+  recording: AudioRecorder | null,
+): Promise<void> {
   if (!recording) {
     return;
   }
@@ -381,7 +424,7 @@ export async function safeCleanupRecording(recording: AudioRecorder | null): Pro
       await recording.stop();
     }
   } catch (error: unknown) {
-    console.error('[PitchDetector] Error during recording cleanup:', error);
+    console.error("[PitchDetector] Error during recording cleanup:", error);
   }
 }
 
@@ -452,7 +495,7 @@ export async function startPitchListening(
 
     return true;
   } catch (error: unknown) {
-    console.error('[PitchDetector] startPitchListening failed:', error);
+    console.error("[PitchDetector] startPitchListening failed:", error);
     if (activeRecording) {
       await safeCleanupRecording(activeRecording);
       activeRecording = null;

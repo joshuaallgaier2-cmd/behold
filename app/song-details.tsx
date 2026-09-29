@@ -1,35 +1,41 @@
-import AdaptiveButton from '@/src/components/adaptive/AdaptiveButton';
-import AdaptiveCard from '@/src/components/adaptive/AdaptiveCard';
-import AdaptiveChip from '@/src/components/adaptive/AdaptiveChip';
-import AdaptiveHeader from '@/src/components/adaptive/AdaptiveHeader';
-import HymnViewerModal from '@/src/components/HymnViewerModal';
-import SvgSheetCanvas from '@/src/components/SvgSheetCanvas';
-import { useBeholdTheme } from '@/src/context/ThemeContext';
-import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
-import { usePracticeEngine } from '@/src/hooks/usePracticeEngine';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import AdaptiveButton from "@/src/components/adaptive/AdaptiveButton";
+import AdaptiveCard from "@/src/components/adaptive/AdaptiveCard";
+import AdaptiveChip from "@/src/components/adaptive/AdaptiveChip";
+import AdaptiveHeader from "@/src/components/adaptive/AdaptiveHeader";
+import HymnViewerModal from "@/src/components/HymnViewerModal";
+import SvgSheetCanvas from "@/src/components/SvgSheetCanvas";
+import { useBeholdTheme } from "@/src/context/ThemeContext";
+import { INTERACTIVE_MUSIC_DATABASE } from "@/src/data/musicData";
+import { usePracticeEngine } from "@/src/hooks/usePracticeEngine";
 import {
-  Dimensions,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getElevation, interaction, radius, spacing, typography } from '@/src/theme/platformDesign';
+    getElevation,
+    interaction,
+    radius,
+    spacing,
+    typography,
+} from "@/src/theme/platformDesign";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import {
+    Dimensions,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const isIOS = Platform.OS === 'ios';
-const { width: WINDOW_WIDTH } = Dimensions.get('window');
+const isIOS = Platform.OS === "ios";
+const { width: WINDOW_WIDTH } = Dimensions.get("window");
 
 const TEMPO_SPEEDS = [
-  { label: '0.75x', value: 0.75 },
-  { label: '1.0x', value: 1.0 },
-  { label: '1.25x', value: 1.25 },
-  { label: '1.5x', value: 1.5 },
+  { label: "0.75x", value: 0.75 },
+  { label: "1.0x", value: 1.0 },
+  { label: "1.25x", value: 1.25 },
+  { label: "1.5x", value: 1.5 },
 ];
 
 export default function SongDetailsScreen() {
@@ -43,7 +49,9 @@ export default function SongDetailsScreen() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const song = useMemo(
-    () => INTERACTIVE_MUSIC_DATABASE.find((s) => s.id === id) || INTERACTIVE_MUSIC_DATABASE[0],
+    () =>
+      INTERACTIVE_MUSIC_DATABASE.find((s) => s.id === id) ||
+      INTERACTIVE_MUSIC_DATABASE[0],
     [id],
   );
 
@@ -52,7 +60,10 @@ export default function SongDetailsScreen() {
   const totalDurationMs = useMemo(() => {
     if (!targetNotes.length) return 10000;
     const lastNote = targetNotes[targetNotes.length - 1];
-    return Math.max(1000, (lastNote?.timestampMs ?? 0) + (lastNote?.durationMs ?? 1000));
+    return Math.max(
+      1000,
+      (lastNote?.timestampMs ?? 0) + (lastNote?.durationMs ?? 1000),
+    );
   }, [targetNotes]);
 
   const { adjustedTimeMs } = usePracticeEngine(
@@ -61,7 +72,7 @@ export default function SongDetailsScreen() {
     currentTimeMs,
     isPlaying,
     {
-      mode: 'listen',
+      mode: "listen",
       loopStartMs: 0,
       loopEndMs: totalDurationMs,
       tempoMultiplier,
@@ -109,22 +120,34 @@ export default function SongDetailsScreen() {
   const canvasWidth = Math.min(WINDOW_WIDTH - 32, 960);
   const currentSeconds = Math.floor(currentTimeMs / 1000);
   const totalSeconds = Math.ceil(totalDurationMs / 1000);
-  const progressPercent = Math.min(100, Math.round((currentTimeMs / totalDurationMs) * 100));
+  const progressPercent = Math.min(
+    100,
+    Math.round((currentTimeMs / totalDurationMs) * 100),
+  );
 
   if (!song) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[typography.titleSmall, { color: colors.text, padding: 24 }]}>Song not found</Text>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <Text
+          style={[typography.titleSmall, { color: colors.text, padding: 24 }]}
+        >
+          Song not found
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top", "left", "right"]}
+    >
       {/* ── PLATFORM-ADAPTIVE HEADER ──────────────────────────────────────── */}
       <AdaptiveHeader
         title={song.title}
-        subtitle={`#${song.number} • ${song.keySignature || 'C'}`}
+        subtitle={`#${song.number} • ${song.keySignature || "C"}`}
         onBack={handleBack}
         backgroundColor={colors.surface}
         textColor={colors.text}
@@ -134,39 +157,60 @@ export default function SongDetailsScreen() {
             onPress={togglePlay}
             android_ripple={
               interaction.useRipple
-                ? { color: 'rgba(255,255,255,0.15)', borderless: true, radius: 22 }
+                ? {
+                    color: "rgba(255,255,255,0.15)",
+                    borderless: true,
+                    radius: 22,
+                  }
                 : undefined
             }
             style={({ pressed }) => [
               styles.headerPlayBtn,
-              isPlaying ? styles.headerPlayBtnActive : styles.headerPlayBtnDefault,
+              isPlaying
+                ? styles.headerPlayBtnActive
+                : styles.headerPlayBtnDefault,
               isIOS && pressed && { opacity: interaction.pressOpacity },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={isPlaying ? 'Pause playback' : 'Start playback'}
+            accessibilityLabel={isPlaying ? "Pause playback" : "Start playback"}
           >
             <Ionicons
-              name={isPlaying ? 'pause' : 'play'}
+              name={isPlaying ? "pause" : "play"}
               size={18}
-              color={isPlaying ? '#0F172A' : '#FFFFFF'}
+              color={isPlaying ? "#0F172A" : "#FFFFFF"}
               style={!isPlaying ? { marginLeft: 2 } : undefined}
             />
-            <Text style={[
-              typography.labelButton,
-              { color: isPlaying ? '#0F172A' : '#FFFFFF', fontSize: isIOS ? 14 : 12 },
-            ]}>
-              {isPlaying ? 'Pause' : 'Play'}
+            <Text
+              style={[
+                typography.labelButton,
+                {
+                  color: isPlaying ? "#0F172A" : "#FFFFFF",
+                  fontSize: isIOS ? 14 : 12,
+                },
+              ]}
+            >
+              {isPlaying ? "Pause" : "Play"}
             </Text>
           </Pressable>
         }
         centerElement={
-          <View style={isIOS ? styles.headerCenterIOS : styles.headerCenterAndroid}>
-            <Text style={[isIOS ? styles.iosTitleText : styles.androidTitleText, { color: colors.text }]} numberOfLines={1}>
+          <View
+            style={isIOS ? styles.headerCenterIOS : styles.headerCenterAndroid}
+          >
+            <Text
+              style={[
+                isIOS ? styles.iosTitleText : styles.androidTitleText,
+                { color: colors.text },
+              ]}
+              numberOfLines={1}
+            >
               {song.title}
             </Text>
             <View style={styles.headerMetaRow}>
-              <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>
-                #{song.number} • {song.keySignature || 'C'}
+              <Text
+                style={[typography.caption, { color: colors.onSurfaceVariant }]}
+              >
+                #{song.number} • {song.keySignature || "C"}
               </Text>
             </View>
           </View>
@@ -174,20 +218,32 @@ export default function SongDetailsScreen() {
       />
 
       {/* ── PLAYBACK CONTROL TOOLBAR ─────────────────────────────────────── */}
-      <View style={[
-        styles.playbackToolbar,
-        {
-          backgroundColor: isIOS ? colors.background : colors.surfaceContainer,
-          borderBottomWidth: isIOS ? 0.5 : 0,
-          borderBottomColor: colors.border,
-          ...getElevation(isIOS ? 0 : 1),
-        },
-      ]}>
+      <View
+        style={[
+          styles.playbackToolbar,
+          {
+            backgroundColor: isIOS
+              ? colors.background
+              : colors.surfaceContainer,
+            borderBottomWidth: isIOS ? 0.5 : 0,
+            borderBottomColor: colors.border,
+            ...getElevation(isIOS ? 0 : 1),
+          },
+        ]}
+      >
         {/* Progress Group */}
         <View style={styles.toolbarProgressGroup}>
           <Pressable
             onPress={resetPlayback}
-            android_ripple={interaction.useRipple ? { color: 'rgba(255,255,255,0.1)', borderless: true, radius: 14 } : undefined}
+            android_ripple={
+              interaction.useRipple
+                ? {
+                    color: "rgba(255,255,255,0.1)",
+                    borderless: true,
+                    radius: 14,
+                  }
+                : undefined
+            }
             style={({ pressed }) => [
               styles.resetIconButton,
               { backgroundColor: colors.surfaceContainerHigh },
@@ -200,11 +256,19 @@ export default function SongDetailsScreen() {
           <Text style={[styles.timeCounterText, { color: colors.text }]}>
             {currentSeconds}s / {totalSeconds}s
           </Text>
-          <View style={[styles.progressTrack, { backgroundColor: colors.surfaceContainerHigh }]}>
+          <View
+            style={[
+              styles.progressTrack,
+              { backgroundColor: colors.surfaceContainerHigh },
+            ]}
+          >
             <View
               style={[
                 styles.progressFill,
-                { width: `${progressPercent}%`, backgroundColor: colors.accent },
+                {
+                  width: `${progressPercent}%`,
+                  backgroundColor: colors.accent,
+                },
               ]}
             />
           </View>
@@ -212,7 +276,9 @@ export default function SongDetailsScreen() {
 
         {/* Speed Selector Chips */}
         <View style={styles.toolbarSpeedGroup}>
-          <Text style={[typography.caption, { color: colors.onSurfaceVariant }]}>
+          <Text
+            style={[typography.caption, { color: colors.onSurfaceVariant }]}
+          >
             {Math.round(song.tempoBpm * tempoMultiplier)} BPM
           </Text>
           <View style={styles.speedChipsWrap}>
@@ -240,22 +306,40 @@ export default function SongDetailsScreen() {
         {/* Standard Sheet Music Paper Card */}
         <AdaptiveCard
           elevation={2}
-          backgroundColor={isIOS ? '#FFFFFF' : colors.surface}
+          backgroundColor={isIOS ? "#FFFFFF" : colors.surface}
           borderColor={colors.border}
           style={styles.sheetPaperCard}
         >
           <View style={styles.sheetHeader}>
             <View style={styles.sheetTitleGroup}>
-              <Text style={[typography.titleSmall, { color: isIOS ? '#0F172A' : colors.text }]}>
+              <Text
+                style={[
+                  typography.titleSmall,
+                  { color: isIOS ? "#0F172A" : colors.text },
+                ]}
+              >
                 {song.title}
               </Text>
-              <Text style={[typography.caption, { color: isIOS ? '#64748B' : colors.onSurfaceVariant, marginTop: 2 }]}>
-                {song.book || 'Standard Sheet Music'} • Hymn #{song.number}
+              <Text
+                style={[
+                  typography.caption,
+                  {
+                    color: isIOS ? "#64748B" : colors.onSurfaceVariant,
+                    marginTop: 2,
+                  },
+                ]}
+              >
+                {song.book || "Standard Sheet Music"} • Hymn #{song.number}
               </Text>
             </View>
             <View style={styles.sheetMetaRight}>
-              <Text style={[typography.caption, { color: isIOS ? '#475569' : colors.onSurfaceVariant }]}>
-                Key of {song.keySignature || 'C'}
+              <Text
+                style={[
+                  typography.caption,
+                  { color: isIOS ? "#475569" : colors.onSurfaceVariant },
+                ]}
+              >
+                Key of {song.keySignature || "C"}
               </Text>
             </View>
           </View>
@@ -295,7 +379,14 @@ export default function SongDetailsScreen() {
             variant="outlined"
             color={colors.accent}
             textColor={colors.text}
-            icon={<Ionicons name="musical-notes" size={18} color={colors.accent} style={{ marginRight: 6 }} />}
+            icon={
+              <Ionicons
+                name="musical-notes"
+                size={18}
+                color={colors.accent}
+                style={{ marginRight: 6 }}
+              />
+            }
             style={styles.fullscreenBtn}
           />
         </View>
@@ -316,40 +407,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerPlayBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     paddingHorizontal: isIOS ? 14 : 16,
     paddingVertical: isIOS ? 8 : 6,
     borderRadius: isIOS ? 20 : radius.small,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   headerPlayBtnDefault: {
-    backgroundColor: '#FFD700',
+    backgroundColor: "#FFD700",
   },
   headerPlayBtnActive: {
-    backgroundColor: '#FACC15',
+    backgroundColor: "#FACC15",
   },
   headerCenterIOS: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerCenterAndroid: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   iosTitleText: {
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: -0.41,
   },
   androidTitleText: {
     fontSize: 20,
-    fontWeight: '400',
+    fontWeight: "400",
     letterSpacing: 0,
   },
   headerMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginTop: 2,
   },
@@ -358,15 +449,15 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   playbackToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   toolbarProgressGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     flex: 1,
     marginRight: spacing.md,
@@ -375,32 +466,32 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   timeCounterText: {
     fontSize: 12,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
   },
   progressTrack: {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   toolbarSpeedGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   speedChipsWrap: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 4,
   },
   speedChip: {
@@ -412,37 +503,37 @@ const styles = StyleSheet.create({
   },
   scrollContentContainer: {
     padding: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   sheetPaperCard: {
-    width: '100%',
+    width: "100%",
     maxWidth: 960,
     paddingVertical: 20,
     paddingHorizontal: 16,
   },
   sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     paddingBottom: 14,
     marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: "#F1F5F9",
   },
   sheetTitleGroup: {
     flex: 1,
   },
   sheetMetaRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   canvasContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    overflow: "hidden",
   },
   footerActionRow: {
-    width: '100%',
+    width: "100%",
     maxWidth: 960,
     marginTop: 16,
     marginBottom: 24,
