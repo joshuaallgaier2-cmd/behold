@@ -1,17 +1,27 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text as RNText, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo } from "react";
+import {
+    Text as RNText,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import Svg, {
-  Circle,
-  Defs,
-  Ellipse,
-  FeGaussianBlur,
-  Filter,
-  G,
-  Line,
-  Path,
-  Rect,
-  Text,
-} from 'react-native-svg';
+    Defs,
+    Ellipse,
+    FeGaussianBlur,
+    Filter,
+    G,
+    Line,
+    Path,
+    Rect,
+    Text
+} from "react-native-svg";
+import {
+  BRAVURA_GLYPHS,
+} from "../utils/musicNotationUtils";
+import StaffTimeSignature, {
+  getTimeSignatureStaffWidth,
+} from "./StaffTimeSignature";
 
 export interface TargetNote {
   id: string;
@@ -23,17 +33,22 @@ export interface TargetNote {
   xPosition?: number;
   yPosition?: number;
   label?: string;
-  accidental?: '#' | 'b' | 'n';
+  accidental?: "#" | "b" | "n";
 }
 
-export type NoteHitFeedback = 'correct' | 'incorrect' | 'pending' | 'hit' | 'miss';
+export type NoteHitFeedback =
+  | "correct"
+  | "incorrect"
+  | "pending"
+  | "hit"
+  | "miss";
 
 export interface SvgSheetCanvasProps {
   notes: TargetNote[];
   activeNoteId: string | null;
   width: number;
   height: number;
-  clef?: 'treble' | 'bass';
+  clef?: "treble" | "bass";
   keySignature?: string;
   timeSignature?: string;
   tempoBpm?: number;
@@ -64,85 +79,79 @@ const TREBLE_TOP_STEP = 38; // F5
 const BASS_TOP_STEP = 26; // A3
 const BASS_BOTTOM_STEP = 18; // G2
 
-import {
-  BRAVURA_GLYPHS,
-  parseTimeSignature,
-} from '../utils/musicNotationUtils';
-import StaffTimeSignature, { getTimeSignatureStaffWidth } from './StaffTimeSignature';
-
-const STAFF_INK = '#1E293B';
-const DEFAULT_NOTE = '#0F172A';
-const DEFAULT_HIGHLIGHT = '#FFD700';
-const HIT_CORRECT = '#10B981';
-const HIT_INCORRECT = '#EF4444';
+const STAFF_INK = "#1E293B";
+const DEFAULT_NOTE = "#0F172A";
+const DEFAULT_HIGHLIGHT = "#FFD700";
+const HIT_CORRECT = "#10B981";
+const HIT_INCORRECT = "#EF4444";
 
 interface KeySignatureInfo {
-  type: '#' | 'b';
+  type: "#" | "b";
   count: number;
   displayName: string;
 }
 
 const KEY_ACCIDENTALS: Record<string, KeySignatureInfo> = {
-  C: { type: '#', count: 0, displayName: 'C Major' },
-  Am: { type: '#', count: 0, displayName: 'A Minor' },
-  'C Major': { type: '#', count: 0, displayName: 'C Major' },
-  'A Minor': { type: '#', count: 0, displayName: 'A Minor' },
+  C: { type: "#", count: 0, displayName: "C Major" },
+  Am: { type: "#", count: 0, displayName: "A Minor" },
+  "C Major": { type: "#", count: 0, displayName: "C Major" },
+  "A Minor": { type: "#", count: 0, displayName: "A Minor" },
 
-  G: { type: '#', count: 1, displayName: 'G Major (1♯)' },
-  Em: { type: '#', count: 1, displayName: 'E Minor (1♯)' },
-  'G Major': { type: '#', count: 1, displayName: 'G Major (1♯)' },
-  '1#': { type: '#', count: 1, displayName: '1 Sharp' },
-  '1': { type: '#', count: 1, displayName: '1 Sharp' },
+  G: { type: "#", count: 1, displayName: "G Major (1♯)" },
+  Em: { type: "#", count: 1, displayName: "E Minor (1♯)" },
+  "G Major": { type: "#", count: 1, displayName: "G Major (1♯)" },
+  "1#": { type: "#", count: 1, displayName: "1 Sharp" },
+  "1": { type: "#", count: 1, displayName: "1 Sharp" },
 
-  D: { type: '#', count: 2, displayName: 'D Major (2♯)' },
-  Bm: { type: '#', count: 2, displayName: 'B Minor (2♯)' },
-  'D Major': { type: '#', count: 2, displayName: 'D Major (2♯)' },
-  '2#': { type: '#', count: 2, displayName: '2 Sharps' },
-  '2': { type: '#', count: 2, displayName: '2 Sharps' },
+  D: { type: "#", count: 2, displayName: "D Major (2♯)" },
+  Bm: { type: "#", count: 2, displayName: "B Minor (2♯)" },
+  "D Major": { type: "#", count: 2, displayName: "D Major (2♯)" },
+  "2#": { type: "#", count: 2, displayName: "2 Sharps" },
+  "2": { type: "#", count: 2, displayName: "2 Sharps" },
 
-  A: { type: '#', count: 3, displayName: 'A Major (3♯)' },
-  'F#m': { type: '#', count: 3, displayName: 'F♯ Minor (3♯)' },
-  'A Major': { type: '#', count: 3, displayName: 'A Major (3♯)' },
-  '3#': { type: '#', count: 3, displayName: '3 Sharps' },
-  '3': { type: '#', count: 3, displayName: '3 Sharps' },
+  A: { type: "#", count: 3, displayName: "A Major (3♯)" },
+  "F#m": { type: "#", count: 3, displayName: "F♯ Minor (3♯)" },
+  "A Major": { type: "#", count: 3, displayName: "A Major (3♯)" },
+  "3#": { type: "#", count: 3, displayName: "3 Sharps" },
+  "3": { type: "#", count: 3, displayName: "3 Sharps" },
 
-  E: { type: '#', count: 4, displayName: 'E Major (4♯)' },
-  'C#m': { type: '#', count: 4, displayName: 'C♯ Minor (4♯)' },
-  'E Major': { type: '#', count: 4, displayName: 'E Major (4♯)' },
+  E: { type: "#", count: 4, displayName: "E Major (4♯)" },
+  "C#m": { type: "#", count: 4, displayName: "C♯ Minor (4♯)" },
+  "E Major": { type: "#", count: 4, displayName: "E Major (4♯)" },
 
-  B: { type: '#', count: 5, displayName: 'B Major (5♯)' },
-  'G#m': { type: '#', count: 5, displayName: 'G♯ Minor (5♯)' },
+  B: { type: "#", count: 5, displayName: "B Major (5♯)" },
+  "G#m": { type: "#", count: 5, displayName: "G♯ Minor (5♯)" },
 
-  'F#': { type: '#', count: 6, displayName: 'F♯ Major (6♯)' },
-  'C#': { type: '#', count: 7, displayName: 'C♯ Major (7♯)' },
+  "F#": { type: "#", count: 6, displayName: "F♯ Major (6♯)" },
+  "C#": { type: "#", count: 7, displayName: "C♯ Major (7♯)" },
 
-  F: { type: 'b', count: 1, displayName: 'F Major (1♭)' },
-  Dm: { type: 'b', count: 1, displayName: 'D Minor (1♭)' },
-  'F Major': { type: 'b', count: 1, displayName: 'F Major (1♭)' },
-  '1b': { type: 'b', count: 1, displayName: '1 Flat' },
-  '-1': { type: 'b', count: 1, displayName: '1 Flat' },
+  F: { type: "b", count: 1, displayName: "F Major (1♭)" },
+  Dm: { type: "b", count: 1, displayName: "D Minor (1♭)" },
+  "F Major": { type: "b", count: 1, displayName: "F Major (1♭)" },
+  "1b": { type: "b", count: 1, displayName: "1 Flat" },
+  "-1": { type: "b", count: 1, displayName: "1 Flat" },
 
-  Bb: { type: 'b', count: 2, displayName: 'B♭ Major (2♭)' },
-  Gm: { type: 'b', count: 2, displayName: 'G Minor (2♭)' },
-  'Bb Major': { type: 'b', count: 2, displayName: 'B♭ Major (2♭)' },
-  'B-flat': { type: 'b', count: 2, displayName: 'B♭ Major (2♭)' },
-  '2b': { type: 'b', count: 2, displayName: '2 Flats' },
-  '-2': { type: 'b', count: 2, displayName: '2 Flats' },
+  Bb: { type: "b", count: 2, displayName: "B♭ Major (2♭)" },
+  Gm: { type: "b", count: 2, displayName: "G Minor (2♭)" },
+  "Bb Major": { type: "b", count: 2, displayName: "B♭ Major (2♭)" },
+  "B-flat": { type: "b", count: 2, displayName: "B♭ Major (2♭)" },
+  "2b": { type: "b", count: 2, displayName: "2 Flats" },
+  "-2": { type: "b", count: 2, displayName: "2 Flats" },
 
-  Eb: { type: 'b', count: 3, displayName: 'E♭ Major (3♭)' },
-  Cm: { type: 'b', count: 3, displayName: 'C Minor (3♭)' },
-  'Eb Major': { type: 'b', count: 3, displayName: 'E♭ Major (3♭)' },
-  'E-flat': { type: 'b', count: 3, displayName: 'E♭ Major (3♭)' },
-  '3b': { type: 'b', count: 3, displayName: '3 Flats' },
-  '-3': { type: 'b', count: 3, displayName: '3 Flats' },
+  Eb: { type: "b", count: 3, displayName: "E♭ Major (3♭)" },
+  Cm: { type: "b", count: 3, displayName: "C Minor (3♭)" },
+  "Eb Major": { type: "b", count: 3, displayName: "E♭ Major (3♭)" },
+  "E-flat": { type: "b", count: 3, displayName: "E♭ Major (3♭)" },
+  "3b": { type: "b", count: 3, displayName: "3 Flats" },
+  "-3": { type: "b", count: 3, displayName: "3 Flats" },
 
-  Ab: { type: 'b', count: 4, displayName: 'A♭ Major (4♭)' },
-  Fm: { type: 'b', count: 4, displayName: 'F Minor (4♭)' },
-  'Ab Major': { type: 'b', count: 4, displayName: 'A♭ Major (4♭)' },
+  Ab: { type: "b", count: 4, displayName: "A♭ Major (4♭)" },
+  Fm: { type: "b", count: 4, displayName: "F Minor (4♭)" },
+  "Ab Major": { type: "b", count: 4, displayName: "A♭ Major (4♭)" },
 
-  Db: { type: 'b', count: 5, displayName: 'D♭ Major (5♭)' },
-  Gb: { type: 'b', count: 6, displayName: 'G♭ Major (6♭)' },
-  Cb: { type: 'b', count: 7, displayName: 'C♭ Major (7♭)' },
+  Db: { type: "b", count: 5, displayName: "D♭ Major (5♭)" },
+  Gb: { type: "b", count: 6, displayName: "G♭ Major (6♭)" },
+  Cb: { type: "b", count: 7, displayName: "C♭ Major (7♭)" },
 };
 
 const SHARP_STEPS_FROM_BOTTOM = {
@@ -158,7 +167,7 @@ const FLAT_STEPS_FROM_BOTTOM = {
 const parsePitchToStep = (pitchStr: string): number => {
   const match = pitchStr.match(/^([A-G])([#b]?)(-?\d+)$/);
   if (!match) return MIDDLE_C_STEP;
-  const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const noteNames = ["C", "D", "E", "F", "G", "A", "B"];
   const noteIndex = noteNames.indexOf(match[1]);
   const octave = parseInt(match[3], 10);
   return octave * 7 + noteIndex;
@@ -171,8 +180,8 @@ const resolveNoteColor = (
   hitFeedback?: Record<string, NoteHitFeedback>,
 ): string => {
   const feedback = hitFeedback?.[noteId];
-  if (feedback === 'correct' || feedback === 'hit') return HIT_CORRECT;
-  if (feedback === 'incorrect' || feedback === 'miss') return HIT_INCORRECT;
+  if (feedback === "correct" || feedback === "hit") return HIT_CORRECT;
+  if (feedback === "incorrect" || feedback === "miss") return HIT_INCORRECT;
   if (noteId === activeNoteId) return highlightColor;
   return DEFAULT_NOTE;
 };
@@ -223,8 +232,8 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
   activeNoteId,
   width,
   height,
-  keySignature = 'C',
-  timeSignature = '4/4',
+  keySignature = "C",
+  timeSignature = "4/4",
   tempoBpm = 76,
   isPlaying = false,
   tempoMultiplier = 1.0,
@@ -244,19 +253,22 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
 
   const keyInfo = KEY_ACCIDENTALS[keySignature] ?? KEY_ACCIDENTALS.C;
   const accidentalCount = keyInfo.count;
-  const accidentalGlyph = keyInfo.type === '#' ? '♯' : '♭';
+  const accidentalGlyph = keyInfo.type === "#" ? "♯" : "♭";
   const keyEndX = CLEF_X + 46 + accidentalCount * 16;
   const timeSigWidth = getTimeSignatureStaffWidth(timeSignature, LINE_SPACING);
   const timeSigX = keyEndX + 14;
   const dynamicNoteStartX = Math.max(195, timeSigX + timeSigWidth + 20);
 
-  const yForStep = (step: number, onTreble: boolean): number => {
-    const half = LINE_SPACING / 2;
-    if (onTreble) {
-      return trebleBottomY - (step - TREBLE_BOTTOM_STEP) * half;
-    }
-    return bassTopY + (BASS_TOP_STEP - step) * half;
-  };
+  const yForStep = useCallback(
+    (step: number, onTreble: boolean): number => {
+      const half = LINE_SPACING / 2;
+      if (onTreble) {
+        return trebleBottomY - (step - TREBLE_BOTTOM_STEP) * half;
+      }
+      return bassTopY + (BASS_TOP_STEP - step) * half;
+    },
+    [trebleBottomY, bassTopY],
+  );
 
   const renderStaff = (topY: number, key: string) =>
     staffLineYs(topY).map((y, index) => (
@@ -272,10 +284,15 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
       />
     ));
 
-  const renderKeyAccidentals = (staff: 'treble' | 'bass', staffBottomY: number) => {
+  const renderKeyAccidentals = (
+    staff: "treble" | "bass",
+    staffBottomY: number,
+  ) => {
     if (accidentalCount === 0) return null;
     const offsets =
-      keyInfo.type === '#' ? SHARP_STEPS_FROM_BOTTOM[staff] : FLAT_STEPS_FROM_BOTTOM[staff];
+      keyInfo.type === "#"
+        ? SHARP_STEPS_FROM_BOTTOM[staff]
+        : FLAT_STEPS_FROM_BOTTOM[staff];
     return offsets.slice(0, accidentalCount).map((stepsFromBottom, index) => {
       const y = staffBottomY - stepsFromBottom * (LINE_SPACING / 2) + 6;
       return (
@@ -283,7 +300,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
           key={`${staff}-acc-${index}`}
           x={CLEF_X + 48 + index * 16}
           y={y}
-          fontSize={keyInfo.type === '#' ? 22 : 24}
+          fontSize={keyInfo.type === "#" ? 22 : 24}
           fill={STAFF_INK}
           fontWeight="bold"
         >
@@ -293,21 +310,27 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
     });
   };
 
-
-
   const renderedNotes = useMemo(() => {
     const safeNotes = notes ?? [];
     const count = Math.max(safeNotes.length, 1);
     const usableWidth = NOTE_END_X - dynamicNoteStartX;
-    const noteSpacing = safeNotes.length > 1 ? usableWidth / (safeNotes.length - 1) : 0;
+    const noteSpacing =
+      safeNotes.length > 1 ? usableWidth / (safeNotes.length - 1) : 0;
 
     return safeNotes.map((note, index) => {
-      const pitchString = note.pitch ?? note.pitchName ?? 'C4';
+      const pitchString = note.pitch ?? note.pitchName ?? "C4";
       const step = parsePitchToStep(pitchString);
       const onTreble = step >= MIDDLE_C_STEP;
-      const x = dynamicNoteStartX + (safeNotes.length === 1 ? usableWidth / count : index * noteSpacing);
+      const x =
+        dynamicNoteStartX +
+        (safeNotes.length === 1 ? usableWidth / count : index * noteSpacing);
       const y = yForStep(step, onTreble);
-      const color = resolveNoteColor(note.id, activeNoteId, highlightColor, hitFeedback);
+      const color = resolveNoteColor(
+        note.id,
+        activeNoteId,
+        highlightColor,
+        hitFeedback,
+      );
       const isActive = note.id === activeNoteId;
       const stemUp = onTreble
         ? step < TREBLE_BOTTOM_STEP + 4
@@ -331,8 +354,24 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
 
           {isActive && (
             <G>
-              <Ellipse cx={x} cy={y} rx={18} ry={18} fill={highlightColor} opacity={0.25} filter="url(#glow)" />
-              <Ellipse cx={x} cy={y} rx={26} ry={26} fill={highlightColor} opacity={0.12} filter="url(#glow)" />
+              <Ellipse
+                cx={x}
+                cy={y}
+                rx={18}
+                ry={18}
+                fill={highlightColor}
+                opacity={0.25}
+                filter="url(#glow)"
+              />
+              <Ellipse
+                cx={x}
+                cy={y}
+                rx={26}
+                ry={26}
+                fill={highlightColor}
+                opacity={0.12}
+                filter="url(#glow)"
+              />
             </G>
           )}
 
@@ -369,8 +408,18 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
           />
 
           {note.accidental ? (
-            <Text x={x - 20} y={y + 6} fontSize={18} fill={color} fontWeight="bold">
-              {note.accidental === '#' ? '♯' : note.accidental === 'b' ? '♭' : '♮'}
+            <Text
+              x={x - 20}
+              y={y + 6}
+              fontSize={18}
+              fill={color}
+              fontWeight="bold"
+            >
+              {note.accidental === "#"
+                ? "♯"
+                : note.accidental === "b"
+                  ? "♭"
+                  : "♮"}
             </Text>
           ) : null}
 
@@ -380,7 +429,7 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
               y={stemUp ? stemY2 - 8 : stemY2 + 16}
               fontSize={11}
               fontWeight="bold"
-              fill={isActive ? highlightColor : '#64748B'}
+              fill={isActive ? highlightColor : "#64748B"}
               textAnchor="middle"
             >
               {note.label}
@@ -398,9 +447,12 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
     dynamicNoteStartX,
     trebleBottomY,
     bassTopY,
+    yForStep,
   ]);
 
-  const handleSheetPress = (event: { nativeEvent: { locationX?: number; offsetX?: number } }) => {
+  const handleSheetPress = (event: {
+    nativeEvent: { locationX?: number; offsetX?: number };
+  }) => {
     if (!onSheetPress || width <= 0) return;
     const tapX = event.nativeEvent.locationX ?? event.nativeEvent.offsetX ?? 0;
     onSheetPress(Math.max(0, Math.min(1, tapX / width)));
@@ -465,21 +517,25 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
           strokeWidth={1.6}
         />
 
-        {renderStaff(trebleTopY, 'treble')}
-        {renderStaff(bassTopY, 'bass')}
+        {renderStaff(trebleTopY, "treble")}
+        {renderStaff(bassTopY, "bass")}
 
         {/* Treble (G) clef (SMuFL Bravura G-Clef aligned to G4-line) */}
-        <G transform={`translate(${CLEF_X}, ${trebleTopY + LINE_SPACING * 3}) scale(${LINE_SPACING / 250})`}>
+        <G
+          transform={`translate(${CLEF_X}, ${trebleTopY + LINE_SPACING * 3}) scale(${LINE_SPACING / 250})`}
+        >
           <Path d={BRAVURA_GLYPHS.gClef.path} fill={STAFF_INK} />
         </G>
 
         {/* Bass (F) clef (SMuFL Bravura F-Clef aligned to F3-line with dots in spaces 3 & 4) */}
-        <G transform={`translate(${CLEF_X}, ${bassTopY + LINE_SPACING}) scale(${LINE_SPACING / 250})`}>
+        <G
+          transform={`translate(${CLEF_X}, ${bassTopY + LINE_SPACING}) scale(${LINE_SPACING / 250})`}
+        >
           <Path d={BRAVURA_GLYPHS.fClef.path} fill={STAFF_INK} />
         </G>
 
-        {renderKeyAccidentals('treble', trebleBottomY)}
-        {renderKeyAccidentals('bass', bassBottomY)}
+        {renderKeyAccidentals("treble", trebleBottomY)}
+        {renderKeyAccidentals("bass", bassBottomY)}
 
         {/* Classical Engraved Time Signatures on Treble and Bass Staves */}
         <StaffTimeSignature
@@ -505,12 +561,15 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
         <View style={styles.floatingControlBar}>
           {onTogglePlay && (
             <TouchableOpacity
-              style={[styles.floatingPlayBtn, isPlaying && styles.floatingPlayBtnActive]}
+              style={[
+                styles.floatingPlayBtn,
+                isPlaying && styles.floatingPlayBtnActive,
+              ]}
               onPress={onTogglePlay}
               activeOpacity={0.8}
             >
               <RNText style={styles.floatingPlayBtnText}>
-                {isPlaying ? '⏸ Pause' : '▶ Play'}
+                {isPlaying ? "⏸ Pause" : "▶ Play"}
               </RNText>
             </TouchableOpacity>
           )}
@@ -531,7 +590,8 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
                   <RNText
                     style={[
                       styles.floatingSpeedPillText,
-                      tempoMultiplier === speed && styles.floatingSpeedPillTextActive,
+                      tempoMultiplier === speed &&
+                        styles.floatingSpeedPillTextActive,
                     ]}
                   >
                     {speed}x
@@ -548,74 +608,71 @@ const SvgSheetCanvas: React.FC<SvgSheetCanvasProps> = ({
 
 const styles = StyleSheet.create({
   canvasWrapper: {
-    position: 'relative',
-    backgroundColor: '#F8FAFC',
+    position: "relative",
+    backgroundColor: "#F8FAFC",
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   floatingControlBar: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     left: 12,
     right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(15, 23, 42, 0.92)",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)",
     elevation: 4,
   },
   floatingPlayBtn: {
-    backgroundColor: '#FFD700',
+    backgroundColor: "#FFD700",
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 8,
   },
   floatingPlayBtnActive: {
-    backgroundColor: '#FACC15',
+    backgroundColor: "#FACC15",
   },
   floatingPlayBtnText: {
-    color: '#000000',
+    color: "#000000",
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   floatingSpeedGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   floatingBpmLabel: {
-    color: '#94A3B8',
+    color: "#94A3B8",
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   floatingSpeedPills: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 4,
   },
   floatingSpeedPill: {
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   floatingSpeedPillActive: {
-    backgroundColor: '#FFD700',
+    backgroundColor: "#FFD700",
   },
   floatingSpeedPillText: {
-    color: '#94A3B8',
+    color: "#94A3B8",
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   floatingSpeedPillTextActive: {
-    color: '#000000',
-    fontWeight: '900',
+    color: "#000000",
+    fontWeight: "900",
   },
 });
 

@@ -4,7 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LiquidGlassView } from '../../src/components/LiquidGlassView';
 import { ThemeProvider, useBeholdTheme } from '../../src/context/ThemeContext';
-import { heights, interaction, radius, spacing, typography, getElevation } from '../../src/theme/platformDesign';
+import { heights, interaction, getElevation } from '../../src/theme/platformDesign';
 
 const isIOS = Platform.OS === 'ios';
 

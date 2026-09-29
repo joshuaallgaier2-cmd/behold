@@ -32,7 +32,7 @@ export function getNoteFrequency(pitch: string): number {
   return NOTE_FREQUENCIES[pitch] ?? 440;
 }
 
-const withFrequencies = (notes: Array<Omit<ClefNote, 'frequencyHz'>>): ClefNote[] =>
+const withFrequencies = (notes: Omit<ClefNote, 'frequencyHz'>[]): ClefNote[] =>
   notes.map((n) => ({
     ...n,
     frequencyHz: getNoteFrequency(n.pitch),

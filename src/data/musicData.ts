@@ -18,7 +18,7 @@ export interface InteractiveSong extends Omit<Song, 'number'> {
 
 const buildTargetNotes = (
   baseOffsetMs: number,
-  pitchSequence: Array<{ pitchName: string; frequencyHz: number; xPosition: number; yPosition: number; label?: string }>,
+  pitchSequence: { pitchName: string; frequencyHz: number; xPosition: number; yPosition: number; label?: string }[],
   measureIndex = 0,
 ): TargetNote[] =>
   pitchSequence.map((entry, index) => ({

@@ -4,8 +4,6 @@ import AdaptiveChip from '@/src/components/adaptive/AdaptiveChip';
 import AdaptiveHeader from '@/src/components/adaptive/AdaptiveHeader';
 import HymnViewerModal from '@/src/components/HymnViewerModal';
 import SvgSheetCanvas from '@/src/components/SvgSheetCanvas';
-import TimeSignatureMark from '@/src/components/TimeSignatureMark';
-import { parseTimeSignature } from '@/src/utils/musicNotationUtils';
 import { useBeholdTheme } from '@/src/context/ThemeContext';
 import { INTERACTIVE_MUSIC_DATABASE } from '@/src/data/musicData';
 import { usePracticeEngine } from '@/src/hooks/usePracticeEngine';
@@ -22,7 +20,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getElevation, heights, interaction, radius, spacing, typography } from '@/src/theme/platformDesign';
+import { getElevation, interaction, radius, spacing, typography } from '@/src/theme/platformDesign';
 
 const isIOS = Platform.OS === 'ios';
 const { width: WINDOW_WIDTH } = Dimensions.get('window');

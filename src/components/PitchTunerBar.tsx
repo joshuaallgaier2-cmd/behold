@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 
 /**
  * Props for the live pitch tuner bar component.
@@ -54,18 +54,18 @@ function getColorForCentsDeviation(cents: number, clarity: number): string {
   const absCents = Math.abs(cents);
 
   if (clarity < 0.3) {
-    return '#999999'; // Gray for low confidence
+    return "#999999"; // Gray for low confidence
   }
 
   if (absCents <= 15) {
-    return '#4CAF50'; // Green - in tune
+    return "#4CAF50"; // Green - in tune
   }
 
   if (absCents <= 35) {
-    return '#FFC107'; // Yellow - close
+    return "#FFC107"; // Yellow - close
   }
 
-  return '#F44336'; // Red - out of tune
+  return "#F44336"; // Red - out of tune
 }
 
 /**
@@ -85,11 +85,11 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
   centsOff,
   clarity,
   targetPitchName,
-  detectedPitchName = '?',
+  detectedPitchName = "?",
   width,
   height = 80,
 }) => {
-  const needlePositionRef = useRef(new Animated.Value(0)).current;
+  const [needlePosition] = useState(() => new Animated.Value(0));
 
   // Map cents to needle position (-50 to +50 cents = 0 to width)
   const needlePercent = (centsOff + 50) / 100;
@@ -102,13 +102,13 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
 
   // Animate needle position
   useEffect(() => {
-    Animated.spring(needlePositionRef, {
+    Animated.spring(needlePosition, {
       toValue: needleX,
       friction: 6,
       tension: 100,
       useNativeDriver: true,
     }).start();
-  }, [needleX, needlePositionRef]);
+  }, [needleX, needlePosition]);
 
   const clarityPercent = Math.round(clarity * 100);
 
@@ -120,13 +120,16 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
         <Text style={[styles.headerLabel, { color: tunerColor }]}>
           Detected: {detectedPitchName}
         </Text>
-        <Text style={styles.clarityLabel}>
-          {clarityPercent}% Confidence
-        </Text>
+        <Text style={styles.clarityLabel}>{clarityPercent}% Confidence</Text>
       </View>
 
       {/* Tuner background track */}
-      <View style={[styles.tunerTrack, { backgroundColor: tunerColor, opacity: 0.15 }]}>
+      <View
+        style={[
+          styles.tunerTrack,
+          { backgroundColor: tunerColor, opacity: 0.15 },
+        ]}
+      >
         {/* Center line (perfectly in tune) */}
         <View
           style={[
@@ -141,13 +144,13 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
         <View
           style={[
             styles.zoneMarker,
-            { left: `${41.5}%`, backgroundColor: '#4CAF50' },
+            { left: `${41.5}%`, backgroundColor: "#4CAF50" },
           ]}
         />
         <View
           style={[
             styles.zoneMarker,
-            { left: `${58.5}%`, backgroundColor: '#4CAF50' },
+            { left: `${58.5}%`, backgroundColor: "#4CAF50" },
           ]}
         />
 
@@ -155,13 +158,13 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
         <View
           style={[
             styles.zoneMarker,
-            { left: `${25}%`, backgroundColor: '#FFC107' },
+            { left: `${25}%`, backgroundColor: "#FFC107" },
           ]}
         />
         <View
           style={[
             styles.zoneMarker,
-            { left: `${75}%`, backgroundColor: '#FFC107' },
+            { left: `${75}%`, backgroundColor: "#FFC107" },
           ]}
         />
       </View>
@@ -171,7 +174,7 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
         style={[
           styles.needle,
           {
-            transform: [{ translateX: needlePositionRef }],
+              transform: [{ translateX: needlePosition }],
             backgroundColor: tunerColor,
           },
         ]}
@@ -180,7 +183,8 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
       {/* Cents display */}
       <View style={styles.centsDisplay}>
         <Text style={[styles.centsText, { color: tunerColor }]}>
-          {centsOff > 0 ? '+' : ''}{Math.round(centsOff)} ¢
+          {centsOff > 0 ? "+" : ""}
+          {Math.round(centsOff)} ¢
         </Text>
       </View>
     </View>
@@ -189,71 +193,69 @@ const PitchTunerBar: React.FC<PitchTunerBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: "#1a1a1a",
     borderRadius: 8,
     padding: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    position: 'absolute',
+    position: "absolute",
     top: 4,
-    width: '100%',
+    width: "100%",
     paddingHorizontal: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
   },
   clarityLabel: {
     fontSize: 9,
-    color: '#999999',
+    color: "#999999",
     marginLeft: 4,
   },
   tunerTrack: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 12,
-    width: '100%',
+    width: "100%",
     height: 24,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   centerLine: {
-    position: 'absolute',
+    position: "absolute",
     width: 2,
-    height: '100%',
-    backgroundColor: '#ffffff',
+    height: "100%",
+    backgroundColor: "#ffffff",
     opacity: 0.6,
   },
   zoneMarker: {
-    position: 'absolute',
+    position: "absolute",
     width: 1,
-    height: '100%',
+    height: "100%",
     opacity: 0.4,
   },
   needle: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 12,
     width: 3,
     height: 28,
     borderRadius: 1.5,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
+    boxShadow: "0px 0px 2px rgba(0, 0, 0, 0.3)",
     elevation: 2,
   },
   centsDisplay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 1,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   centsText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.5,
   },
 });

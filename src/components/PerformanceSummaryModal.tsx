@@ -1,6 +1,6 @@
-import type { PerformanceSummary } from '@/src/types/music';
-import React, { useMemo } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import type { PerformanceSummary } from "@/src/types/music";
+import React, { useMemo } from "react";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 /**
  * Props for the performance summary modal.
@@ -36,11 +36,11 @@ interface PerformanceSummaryModalProps {
  * Calculate letter grade based on accuracy percentage.
  */
 function getLetterGrade(accuracyPercentage: number): string {
-  if (accuracyPercentage >= 95) return 'S';
-  if (accuracyPercentage >= 90) return 'A';
-  if (accuracyPercentage >= 80) return 'B';
-  if (accuracyPercentage >= 70) return 'C';
-  return 'F';
+  if (accuracyPercentage >= 95) return "S";
+  if (accuracyPercentage >= 90) return "A";
+  if (accuracyPercentage >= 80) return "B";
+  if (accuracyPercentage >= 70) return "C";
+  return "F";
 }
 
 /**
@@ -48,18 +48,18 @@ function getLetterGrade(accuracyPercentage: number): string {
  */
 function getGradeColor(grade: string): string {
   switch (grade) {
-    case 'S':
-      return '#FFD700'; // Gold
-    case 'A':
-      return '#4CAF50'; // Green
-    case 'B':
-      return '#FFC107'; // Amber
-    case 'C':
-      return '#FF9800'; // Orange
-    case 'F':
-      return '#F44336'; // Red
+    case "S":
+      return "#FFD700"; // Gold
+    case "A":
+      return "#4CAF50"; // Green
+    case "B":
+      return "#FFC107"; // Amber
+    case "C":
+      return "#FF9800"; // Orange
+    case "F":
+      return "#F44336"; // Red
     default:
-      return '#999999';
+      return "#999999";
   }
 }
 
@@ -83,7 +83,7 @@ const PerformanceSummaryModal: React.FC<PerformanceSummaryModalProps> = ({
   onBackToCatalog,
 }) => {
   const grade = useMemo(
-    () => (summary ? getLetterGrade(summary.accuracyPercentage) : 'F'),
+    () => (summary ? getLetterGrade(summary.accuracyPercentage) : "F"),
     [summary],
   );
 
@@ -104,7 +104,9 @@ const PerformanceSummaryModal: React.FC<PerformanceSummaryModalProps> = ({
         <View style={styles.modalContainer}>
           {/* Grade Badge */}
           <View style={[styles.gradeBadge, { borderColor: gradeColor }]}>
-            <Text style={[styles.gradeText, { color: gradeColor }]}>{grade}</Text>
+            <Text style={[styles.gradeText, { color: gradeColor }]}>
+              {grade}
+            </Text>
           </View>
 
           {/* Accuracy Title */}
@@ -118,28 +120,36 @@ const PerformanceSummaryModal: React.FC<PerformanceSummaryModalProps> = ({
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{summary.correctNotes}</Text>
               <Text style={styles.statLabel}>Correct</Text>
-              <View style={[styles.statIndicator, { backgroundColor: '#4CAF50' }]} />
+              <View
+                style={[styles.statIndicator, { backgroundColor: "#4CAF50" }]}
+              />
             </View>
 
             {/* Incorrect Notes */}
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{summary.incorrectNotes}</Text>
               <Text style={styles.statLabel}>Incorrect</Text>
-              <View style={[styles.statIndicator, { backgroundColor: '#F44336' }]} />
+              <View
+                style={[styles.statIndicator, { backgroundColor: "#F44336" }]}
+              />
             </View>
 
             {/* Missed Notes */}
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{summary.missedNotes}</Text>
               <Text style={styles.statLabel}>Missed</Text>
-              <View style={[styles.statIndicator, { backgroundColor: '#FFC107' }]} />
+              <View
+                style={[styles.statIndicator, { backgroundColor: "#FFC107" }]}
+              />
             </View>
 
             {/* Longest Streak */}
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{summary.longestStreak}</Text>
               <Text style={styles.statLabel}>Best Streak</Text>
-              <View style={[styles.statIndicator, { backgroundColor: '#2196F3' }]} />
+              <View
+                style={[styles.statIndicator, { backgroundColor: "#2196F3" }]}
+              />
             </View>
           </View>
 
@@ -193,20 +203,18 @@ const PerformanceSummaryModal: React.FC<PerformanceSummaryModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContainer: {
-    width: '90%',
+    width: "90%",
     maxWidth: 400,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: "#1a1a1a",
     borderRadius: 16,
     padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    alignItems: "center",
+    boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)",
     elevation: 20,
   },
   gradeBadge: {
@@ -214,47 +222,47 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
   gradeText: {
     fontSize: 48,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 2,
   },
   accuracyTitle: {
     fontSize: 32,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
     marginBottom: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
   statsGrid: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     marginBottom: 20,
   },
   statBox: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    width: "48%",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statValue: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#999999',
+    color: "#999999",
     marginBottom: 8,
   },
   statIndicator: {
@@ -263,32 +271,32 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   pitchAccuracyContainer: {
-    width: '100%',
-    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    width: "100%",
+    backgroundColor: "rgba(33, 150, 243, 0.1)",
     borderRadius: 8,
     padding: 12,
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
     borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    borderLeftColor: "#2196F3",
   },
   pitchAccuracyLabel: {
     fontSize: 11,
-    color: '#999999',
+    color: "#999999",
     marginBottom: 4,
   },
   pitchAccuracyValue: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#2196F3',
+    fontWeight: "700",
+    color: "#2196F3",
     marginBottom: 4,
   },
   pitchAccuracyDescription: {
     fontSize: 10,
-    color: '#666666',
+    color: "#666666",
   },
   buttonContainer: {
-    width: '100%',
+    width: "100%",
     gap: 8,
     marginBottom: 16,
   },
@@ -296,44 +304,44 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonPrimary: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   buttonTextPrimary: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
   },
   buttonSecondary: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   buttonTextSecondary: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
   },
   buttonTertiary: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   buttonTextTertiary: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#cccccc',
+    fontWeight: "600",
+    color: "#cccccc",
   },
   notesSummary: {
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: "rgba(255, 255, 255, 0.1)",
   },
   notesSummaryText: {
     fontSize: 12,
-    color: '#999999',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: "#999999",
+    textAlign: "center",
+    fontStyle: "italic",
   },
 });
 

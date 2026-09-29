@@ -3,9 +3,9 @@
  * Provides platform-aware constants for Material Design 3 (Android/Web)
  * and Apple Human Interface Guidelines (iOS).
  */
-import { Platform, TextStyle } from 'react-native';
+import { Platform, TextStyle } from "react-native";
 
-const isIOS = Platform.OS === 'ios';
+const isIOS = Platform.OS === "ios";
 
 // ── Corner Radii ─────────────────────────────────────────────────────────────
 export const radius = {
@@ -48,10 +48,7 @@ export const heights = {
 export type ElevationLevel = 0 | 1 | 2 | 3;
 
 interface ShadowStyle {
-  shadowColor: string;
-  shadowOffset: { width: number; height: number };
-  shadowOpacity: number;
-  shadowRadius: number;
+  boxShadow: string;
   elevation: number;
 }
 
@@ -62,20 +59,22 @@ interface ShadowStyle {
 export function getElevation(level: ElevationLevel): ShadowStyle {
   if (isIOS) {
     const shadows: Record<ElevationLevel, ShadowStyle> = {
-      0: { shadowColor: '#000', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
-      1: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 0 },
-      2: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 0 },
-      3: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 0 },
+      0: { boxShadow: "none", elevation: 0 },
+      1: { boxShadow: "0px 1px 4px rgba(0, 0, 0, 0.06)", elevation: 0 },
+      2: { boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.08)", elevation: 0 },
+      3: { boxShadow: "0px 4px 16px rgba(0, 0, 0, 0.1)", elevation: 0 },
     };
     return shadows[level];
   }
   // Android: MD3 elevation values
-  const elevationMap: Record<ElevationLevel, number> = { 0: 0, 1: 1, 2: 3, 3: 6 };
+  const elevationMap: Record<ElevationLevel, number> = {
+    0: 0,
+    1: 1,
+    2: 3,
+    3: 6,
+  };
   return {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
+    boxShadow: "none",
     elevation: elevationMap[level],
   };
 }
@@ -91,7 +90,7 @@ export const typography = {
   /** Large title (iOS large nav title / MD3 headline large) */
   titleLarge: {
     fontSize: isIOS ? 34 : 28,
-    fontWeight: isIOS ? '700' : '400',
+    fontWeight: isIOS ? "700" : "400",
     letterSpacing: isIOS ? 0.37 : 0,
     lineHeight: isIOS ? 41 : 36,
   } as TextStyle,
@@ -99,7 +98,7 @@ export const typography = {
   /** Screen/section title */
   titleMedium: {
     fontSize: isIOS ? 22 : 24,
-    fontWeight: isIOS ? '700' : '400',
+    fontWeight: isIOS ? "700" : "400",
     letterSpacing: isIOS ? 0.35 : 0,
     lineHeight: isIOS ? 28 : 32,
   } as TextStyle,
@@ -107,7 +106,7 @@ export const typography = {
   /** Card/list item title */
   titleSmall: {
     fontSize: isIOS ? 17 : 16,
-    fontWeight: isIOS ? '600' : '500',
+    fontWeight: isIOS ? "600" : "500",
     letterSpacing: isIOS ? -0.41 : 0.15,
     lineHeight: isIOS ? 22 : 24,
   } as TextStyle,
@@ -115,7 +114,7 @@ export const typography = {
   /** Body text */
   body: {
     fontSize: isIOS ? 17 : 14,
-    fontWeight: '400',
+    fontWeight: "400",
     letterSpacing: isIOS ? -0.41 : 0.25,
     lineHeight: isIOS ? 22 : 20,
   } as TextStyle,
@@ -123,7 +122,7 @@ export const typography = {
   /** Secondary/caption text */
   caption: {
     fontSize: isIOS ? 13 : 12,
-    fontWeight: '400',
+    fontWeight: "400",
     letterSpacing: isIOS ? -0.08 : 0.4,
     lineHeight: isIOS ? 18 : 16,
   } as TextStyle,
@@ -131,25 +130,25 @@ export const typography = {
   /** Button label */
   labelButton: {
     fontSize: isIOS ? 17 : 14,
-    fontWeight: isIOS ? '600' : '500',
+    fontWeight: isIOS ? "600" : "500",
     letterSpacing: isIOS ? -0.41 : 0.1,
-    textTransform: isIOS ? ('none' as const) : ('uppercase' as const),
+    textTransform: isIOS ? ("none" as const) : ("uppercase" as const),
   } as TextStyle,
 
   /** Chip/badge label */
   labelChip: {
     fontSize: isIOS ? 13 : 11,
-    fontWeight: isIOS ? '600' : '500',
+    fontWeight: isIOS ? "600" : "500",
     letterSpacing: isIOS ? -0.08 : 0.5,
-    textTransform: isIOS ? ('none' as const) : ('uppercase' as const),
+    textTransform: isIOS ? ("none" as const) : ("uppercase" as const),
   } as TextStyle,
 
   /** Overline / section header */
   overline: {
     fontSize: isIOS ? 12 : 11,
-    fontWeight: isIOS ? '600' : '500',
+    fontWeight: isIOS ? "600" : "500",
     letterSpacing: isIOS ? 0.5 : 1,
-    textTransform: 'uppercase' as const,
+    textTransform: "uppercase" as const,
   } as TextStyle,
 } as const;
 
@@ -181,7 +180,7 @@ export const interaction = {
 // ── Navigation ───────────────────────────────────────────────────────────────
 export const navigation = {
   /** Back button icon name */
-  backIcon: isIOS ? 'chevron-back' : 'arrow-back',
+  backIcon: isIOS ? "chevron-back" : "arrow-back",
   /** Header border */
   headerBorderWidth: isIOS ? 0.5 : 0,
   /** Header uses elevation on Android */

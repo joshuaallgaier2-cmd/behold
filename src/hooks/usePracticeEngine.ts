@@ -104,6 +104,7 @@ export function usePracticeEngine(
   adjustedDurationMs: (durationMs: number) => number;
   adjustedTimeMs: (timeMs: number) => number;
   setLoopRegion: (startMs: number, endMs: number) => void;
+  loopRegion: { startMs: number; endMs: number };
   resetStats: () => void;
   generatePerformanceSummary: () => PerformanceSummary;
 } {
@@ -275,6 +276,7 @@ export function usePracticeEngine(
     adjustedDurationMs,
     adjustedTimeMs,
     setLoopRegion,
+    loopRegion: loopConfig,
     resetStats,
     generatePerformanceSummary,
   };

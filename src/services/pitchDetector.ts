@@ -1,10 +1,14 @@
 import {
   AudioModule,
   type AudioRecorder,
+  type NativeAudioModule,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
 } from 'expo-audio';
+
+const audioModule = AudioModule as NativeAudioModule;
+const { AudioRecorder: ExpoAudioRecorder } = audioModule;
 
 const PITCH_RANGE_MIN_HZ = 60;
 const PITCH_RANGE_MAX_HZ = 2000;
@@ -333,7 +337,7 @@ export interface AudioSystemState {
 }
 
 function createPitchRecorder(): AudioRecorder {
-  return new AudioModule.AudioRecorder(PITCH_RECORDING_OPTIONS);
+  return new ExpoAudioRecorder(PITCH_RECORDING_OPTIONS);
 }
 
 export async function requestMicrophonePermissions(): Promise<boolean> {

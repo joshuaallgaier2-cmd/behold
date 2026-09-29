@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
 interface PlaybackCursorBarProps {
   isPlaying: boolean;
@@ -36,19 +36,19 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
   loopStartMs = 0,
   loopEndMs,
 }) => {
-  const translateX = useRef(new Animated.Value(0)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
   const previousTimeRef = useRef(currentTimeMs);
 
   // Guard against zero / NaN / negative duration
   const safeDuration =
-    typeof totalDurationMs === 'number' &&
+    typeof totalDurationMs === "number" &&
     Number.isFinite(totalDurationMs) &&
     totalDurationMs > 0
       ? totalDurationMs
       : 1;
 
   const safeTime =
-    typeof currentTimeMs === 'number' && Number.isFinite(currentTimeMs)
+    typeof currentTimeMs === "number" && Number.isFinite(currentTimeMs)
       ? Math.max(0, Math.min(currentTimeMs, safeDuration))
       : 0;
 
@@ -57,12 +57,12 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
 
   // Calculate loop region bounds
   const loopStartX =
-    typeof loopStartMs === 'number' && Number.isFinite(loopStartMs)
+    typeof loopStartMs === "number" && Number.isFinite(loopStartMs)
       ? (loopStartMs / safeDuration) * containerWidth
       : 0;
 
   const loopEndX =
-    typeof loopEndMs === 'number' && Number.isFinite(loopEndMs)
+    typeof loopEndMs === "number" && Number.isFinite(loopEndMs)
       ? (loopEndMs / safeDuration) * containerWidth
       : containerWidth;
 
@@ -98,7 +98,10 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
 
   return (
     <View
-      style={[styles.container, { width: containerWidth, height: containerHeight }]}
+      style={[
+        styles.container,
+        { width: containerWidth, height: containerHeight },
+      ]}
       pointerEvents="none"
     >
       {/* Loop region background */}
@@ -110,7 +113,7 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
               left: loopStartX,
               width: loopWidth,
               height: containerHeight,
-              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              backgroundColor: "rgba(33, 150, 243, 0.1)",
             },
           ]}
         />
@@ -123,7 +126,7 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
             styles.loopMarker,
             {
               left: loopStartX,
-              borderLeftColor: '#2196F3',
+              borderLeftColor: "#2196F3",
             },
           ]}
         />
@@ -136,7 +139,7 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
             styles.loopMarker,
             {
               left: loopEndX,
-              borderLeftColor: '#FF9800',
+              borderLeftColor: "#FF9800",
             },
           ]}
         />
@@ -167,31 +170,28 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cursorWrapper: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     width: 20, // generous hit-box for the visual elements
-    alignItems: 'center',
+    alignItems: "center",
   },
   // Outer glow ring for the pin head
   pinHeadOuter: {
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: 'rgba(0, 229, 255, 0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 229, 255, 0.35)",
+    justifyContent: "center",
+    alignItems: "center",
     // subtle drop-shadow
-    shadowColor: '#00E5FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
+    boxShadow: "0px 0px 6px rgba(0, 229, 255, 0.9)",
     elevation: 8,
   },
   // Solid core of the pin head
@@ -199,41 +199,38 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#00E5FF',
+    backgroundColor: "#00E5FF",
   },
   // Soft vertical glow behind the line
   lineGlow: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     width: 7,
     bottom: 0,
-    backgroundColor: 'rgba(0, 229, 255, 0.22)',
+    backgroundColor: "rgba(0, 229, 255, 0.22)",
     borderRadius: 3.5,
   },
   // Crisp 3 px cursor line
   line: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     width: 3,
     bottom: 0,
-    backgroundColor: '#00E5FF',
+    backgroundColor: "#00E5FF",
     borderRadius: 1.5,
     // platform shadow for extra definition
-    shadowColor: '#00E5FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.85,
-    shadowRadius: 4,
+    boxShadow: "0px 0px 4px rgba(0, 229, 255, 0.85)",
     elevation: 6,
   },
   // Loop region background highlight
   loopRegion: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     opacity: 0.8,
   },
   // Loop region boundary markers
   loopMarker: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     width: 2,
     bottom: 0,

@@ -1,6 +1,4 @@
 import HymnViewerModal from '@/src/components/HymnViewerModal';
-import TimeSignatureMark from '@/src/components/TimeSignatureMark';
-import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useBeholdTheme } from '../hooks/use-behold-theme';
@@ -10,7 +8,6 @@ type SongCategory = 'hymn' | 'children' | 'youth';
 
 export default function SongsScreen() {
   const { colors } = useBeholdTheme();
-  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<SongCategory>('hymn');
   const [selectedHymnId, setSelectedHymnId] = useState<string | null>(null);
 

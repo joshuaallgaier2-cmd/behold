@@ -6,7 +6,7 @@ import { useBeholdTheme } from '../src/context/ThemeContext';
 export default function AccountScreen() {
   const { colors, toggleTheme, isDark } = useBeholdTheme();
   
-  const [audioBuffering, setAudioBuffering] = useState(256);
+  const audioBuffering = 256;
   const [pitchDetection, setPitchDetection] = useState(true);
   const [cacheEnabled, setCacheEnabled] = useState(true);
 

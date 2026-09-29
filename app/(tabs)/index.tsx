@@ -1,7 +1,6 @@
 import AdaptiveCard from '@/src/components/adaptive/AdaptiveCard';
 import AdaptiveChip from '@/src/components/adaptive/AdaptiveChip';
 import HymnViewerModal from '@/src/components/HymnViewerModal';
-import TimeSignatureMark from '@/src/components/TimeSignatureMark';
 import { useBeholdTheme } from '@/src/context/ThemeContext';
 import { LDS_MUSIC_DATABASE } from '@/src/data/musicData';
 import { audioEngine } from '@/src/services/audioEngine';

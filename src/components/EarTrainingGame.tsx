@@ -154,13 +154,21 @@ const EarTrainingGame: React.FC = () => {
   const [feedback, setFeedback] = useState<'idle' | 'correct' | 'timeout'>('idle');
   const [isPlayingGuide, setIsPlayingGuide] = useState(false);
 
-  const needleAnim = useRef(new Animated.Value(0)).current;
+  const [needleAnim] = useState(() => new Animated.Value(0));
   const holdStartRef = useRef<number | null>(null);
   const holdProgressRef = useRef(0); // 0..1, drives a small progress ring
   const [holdProgress, setHoldProgress] = useState(0);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const answeredRef = useRef(false);
+
+  const stopListening = useCallback(() => {
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
 
   const streakMultiplier = Math.min(1 + Math.floor(streak / 3), MAX_STREAK_MULTIPLIER);
 
@@ -196,23 +204,27 @@ const EarTrainingGame: React.FC = () => {
   }, [question.rootFreq]);
 
   useEffect(() => {
-    playGuide();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question]);
+    const timer = setTimeout(() => {
+      void playGuide();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [playGuide]);
 
   // ── Countdown timer ─────────────────────────────────────────────────
 
   useEffect(() => {
     if (feedback !== 'idle') return;
-    if (timeLeft <= 0) {
-      setFeedback('timeout');
-      setStreak(0);
-      stopListening();
-      return;
-    }
-    const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [timeLeft, feedback]);
+    const timer = setTimeout(() => {
+      if (timeLeft <= 1) {
+        setFeedback('timeout');
+        setStreak(0);
+        stopListening();
+      } else {
+        setTimeLeft((seconds) => seconds - 1);
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, feedback, stopListening]);
 
   // ── Live pitch evaluation loop ───────────────────────────────────────
 
@@ -267,7 +279,7 @@ const EarTrainingGame: React.FC = () => {
         setHoldProgress(0);
       }
     },
-    [question.targetFreq, needleAnim, timeLeft, streakMultiplier]
+    [question.targetFreq, needleAnim, timeLeft, streakMultiplier, stopListening]
   );
 
   const startListening = useCallback(() => {
@@ -276,18 +288,9 @@ const EarTrainingGame: React.FC = () => {
     unsubscribeRef.current = pitchService.startListening(handlePitchResult);
   }, [handlePitchResult]);
 
-  const stopListening = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
-    setIsListening(false);
-  }, []);
-
   useEffect(() => {
     return () => stopListening();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stopListening]);
 
   // ── Derived UI values ────────────────────────────────────────────────
 
@@ -386,7 +389,7 @@ const EarTrainingGame: React.FC = () => {
       )}
       {feedback === 'timeout' && (
         <View style={[styles.banner, styles.bannerFail]}>
-          <Text style={styles.bannerText}>⏱ Time's up — streak reset.</Text>
+          <Text style={styles.bannerText}>⏱ Time&apos;s up — streak reset.</Text>
         </View>
       )}
 

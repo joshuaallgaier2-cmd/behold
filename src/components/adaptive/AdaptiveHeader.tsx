@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useAdaptiveFeedback } from '../../hooks/useAdaptiveFeedback';
-import { getElevation, heights, interaction, navigation, radius, spacing, typography } from '../../theme/platformDesign';
+import { getElevation, heights, interaction, navigation, radius, typography } from '../../theme/platformDesign';
 
 const isIOS = Platform.OS === 'ios';
 

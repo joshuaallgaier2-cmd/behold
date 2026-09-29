@@ -1,21 +1,20 @@
-import { useEffect, useState } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useSyncExternalStore } from 'react';
 
-/**
- * To support static rendering, this value needs to be re-calculated on the client side for web
- */
+const colorSchemeQuery = '(prefers-color-scheme: dark)';
+
+function subscribeToColorScheme(onChange: () => void) {
+  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+
+  const query = window.matchMedia(colorSchemeQuery);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function getColorScheme() {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+  return window.matchMedia(colorSchemeQuery).matches ? 'dark' : 'light';
+}
+
 export function useColorScheme() {
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  const colorScheme = useRNColorScheme();
-
-  if (hasHydrated) {
-    return colorScheme;
-  }
-
-  return 'light';
+  return useSyncExternalStore(subscribeToColorScheme, getColorScheme, () => 'light');
 }

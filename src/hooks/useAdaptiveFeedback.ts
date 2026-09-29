@@ -5,19 +5,9 @@
  * Android: No haptic by default — relies on visual ripple feedback.
  */
 import { Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 type FeedbackType = 'light' | 'medium' | 'heavy' | 'selection';
-
-let Haptics: typeof import('expo-haptics') | null = null;
-
-// Lazy-load expo-haptics only on iOS
-if (Platform.OS === 'ios') {
-  try {
-    Haptics = require('expo-haptics');
-  } catch {
-    // expo-haptics not available — silently degrade
-  }
-}
 
 /**
  * Returns a `triggerFeedback` function that fires platform-appropriate
@@ -28,23 +18,25 @@ if (Platform.OS === 'ios') {
  */
 export function useAdaptiveFeedback() {
   const triggerFeedback = (type: FeedbackType = 'light') => {
-    if (Platform.OS !== 'ios' || !Haptics) return;
+    if (Platform.OS !== 'ios') return;
 
     try {
+      let feedback: Promise<void>;
       switch (type) {
         case 'light':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           break;
         case 'medium':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           break;
         case 'heavy':
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          feedback = Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           break;
         case 'selection':
-          Haptics.selectionAsync();
+          feedback = Haptics.selectionAsync();
           break;
       }
+      void feedback.catch(() => {});
     } catch {
       // Silently handle unavailable haptics
     }
