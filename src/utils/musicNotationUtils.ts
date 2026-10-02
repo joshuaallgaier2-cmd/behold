@@ -150,6 +150,31 @@ export interface StemGeometry {
   stemEndY: number;
 }
 
+export interface NoteDurationNotation {
+  notehead: 'whole' | 'half' | 'filled';
+  hasStem: boolean;
+  dots: number;
+  flags: number;
+}
+
+/** Maps the hymn duration values to the note shapes used by the staff renderer. */
+export function getNoteDurationNotation(durationBeats: number): NoteDurationNotation {
+  const duration = Math.max(0, durationBeats);
+  const baseDuration = duration > 0 ? 2 ** Math.floor(Math.log2(duration)) : 0;
+  const ratio = baseDuration > 0 ? duration / baseDuration : 0;
+  const dots = Math.abs(ratio - 1.5) < 0.001 ? 1
+    : Math.abs(ratio - 1.75) < 0.001 ? 2
+      : Math.abs(ratio - 1.875) < 0.001 ? 3
+        : 0;
+
+  return {
+    notehead: baseDuration >= 4 ? 'whole' : baseDuration >= 2 ? 'half' : 'filled',
+    hasStem: baseDuration < 4,
+    dots,
+    flags: baseDuration > 0 && baseDuration < 1 ? Math.round(Math.log2(1 / baseDuration)) : 0,
+  };
+}
+
 /**
  * Calculates correct standard stem direction and coordinates:
  * - Notes below the middle staff line (B4 treble / D3 bass) have stems pointing UP on the right side.
@@ -162,6 +187,7 @@ export function getStemGeometry(
   noteY: number,
   stemLength = 28,
   noteRadius = 5.5,
+  stemAttachOffset = 0,
 ): StemGeometry {
   const parsed = parsePitch(pitch);
   const middleStep =
@@ -173,14 +199,14 @@ export function getStemGeometry(
     return {
       direction: 'up',
       stemX: noteX + noteRadius,
-      stemStartY: noteY,
+      stemStartY: noteY - stemAttachOffset,
       stemEndY: noteY - stemLength,
     };
   } else {
     return {
       direction: 'down',
       stemX: noteX - noteRadius,
-      stemStartY: noteY,
+      stemStartY: noteY + stemAttachOffset,
       stemEndY: noteY + stemLength,
     };
   }
@@ -347,4 +373,32 @@ export function getBeatX(
   const usableWidth = measureWidth - paddingLeft - paddingRight;
   const fraction = (beat - 1) / Math.max(1, beatsPerMeasure);
   return measureStartX + paddingLeft + fraction * usableWidth;
+}
+
+/** Maps a continuous playback beat to the same padded note grid as getBeatX. */
+export function getPlaybackBeatX(
+  measureStartX: number,
+  measureWidth: number,
+  beat: number,
+  beatsPerMeasure: number,
+): number {
+  const safeBeat = Math.max(1, Math.min(beatsPerMeasure + 1, beat));
+  if (safeBeat <= beatsPerMeasure) {
+    return getBeatX(measureStartX, measureWidth, safeBeat, beatsPerMeasure);
+  }
+
+  const lastBeatX = getBeatX(
+    measureStartX,
+    measureWidth,
+    beatsPerMeasure,
+    beatsPerMeasure,
+  );
+  const nextMeasureBeatOneX = getBeatX(
+    measureStartX + measureWidth,
+    measureWidth,
+    1,
+    beatsPerMeasure,
+  );
+  const progress = safeBeat - beatsPerMeasure;
+  return lastBeatX + (nextMeasureBeatOneX - lastBeatX) * progress;
 }

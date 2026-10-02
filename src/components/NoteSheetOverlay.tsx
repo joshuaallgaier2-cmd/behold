@@ -126,7 +126,6 @@ const NoteMarker = React.memo(
 
     return (
       <Animated.View
-        pointerEvents="none"
         style={[
           styles.markerBase,
           {
@@ -263,10 +262,13 @@ const NoteSheetOverlay: React.FC<NoteSheetOverlayProps> = ({
     >
       <TapGestureHandler onHandlerStateChange={handleSheetTap}>
         <Animated.View
-          pointerEvents={onSheetTap ? "auto" : "none"}
           style={[
             styles.overlayContainer,
-            { width: containerWidth, height: containerHeight },
+            {
+              width: containerWidth,
+              height: containerHeight,
+              pointerEvents: onSheetTap ? "auto" : "none",
+            },
           ]}
         >
           {computedNotes.map(({ note, left, top, isActive, evaluation }) => (
@@ -293,6 +295,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   markerBase: {
+    pointerEvents: "none",
     position: "absolute",
     width: NOTE_MARKER_SIZE,
     height: NOTE_MARKER_SIZE,

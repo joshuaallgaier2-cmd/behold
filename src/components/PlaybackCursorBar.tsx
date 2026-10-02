@@ -102,7 +102,6 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
         styles.container,
         { width: containerWidth, height: containerHeight },
       ]}
-      pointerEvents="none"
     >
       {/* Loop region background */}
       {hasLoopRegion && (
@@ -170,6 +169,7 @@ const PlaybackCursorBar: React.FC<PlaybackCursorBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    pointerEvents: "none",
     position: "absolute",
     top: 0,
     left: 0,

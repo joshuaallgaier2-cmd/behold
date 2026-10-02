@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import {
     ScrollView,
     StyleSheet,
@@ -14,7 +14,6 @@ import Svg, {
     Path,
     Rect,
     Stop,
-    Text as SvgText,
 } from "react-native-svg";
 import type { ClefNote, GrandStaffHymn } from "../types/music";
 import {
@@ -22,10 +21,17 @@ import {
     getBeatX,
     getKeySignatureGlyphs,
     getLedgerLineYs,
+    getNoteDurationNotation,
+  getPlaybackBeatX,
     getPitchStaffY,
     getStemGeometry,
     parsePitch,
 } from "../utils/musicNotationUtils";
+import {
+    BRAVURA_NOTE_GLYPHS,
+    BRAVURA_STAFF_SPACE_UNITS,
+    type BravuraGlyph,
+} from "../utils/musicNoteGlyphs";
 import StaffTimeSignature, {
     getTimeSignatureStaffWidth,
 } from "./StaffTimeSignature";
@@ -45,6 +51,10 @@ export interface GrandStaffViewerProps {
 
 // ── Classical Layout Constants ───────────────────────────────────────────────
 const LINE_SPACING = 12; // Standard 12px line spacing
+const NOTEHEAD_STEM_X_OFFSET =
+  ((BRAVURA_NOTE_GLYPHS.noteheadBlack.bounds[2] - BRAVURA_NOTE_GLYPHS.noteheadBlack.bounds[0]) / 2) *
+  (LINE_SPACING / BRAVURA_STAFF_SPACE_UNITS);
+const NOTEHEAD_STEM_Y_OFFSET = 42 * LINE_SPACING / BRAVURA_STAFF_SPACE_UNITS;
 const STAFF_LINE_COUNT = 5;
 const STAFF_HEIGHT = (STAFF_LINE_COUNT - 1) * LINE_SPACING; // 48px
 
@@ -58,7 +68,7 @@ const BASS_TOP_Y = TREBLE_BOTTOM_Y + CLEF_GAP; // A3 (Line 5)
 const BASS_BOTTOM_Y = BASS_TOP_Y + STAFF_HEIGHT; // G2 (Line 1)
 const TOTAL_SVG_HEIGHT = BASS_BOTTOM_Y + 32;
 
-const MEASURE_BASE_WIDTH = 230;
+const MEASURE_BASE_WIDTH = 210;
 
 /**
  * Classical Grand Staff Curly Brace SVG Path
@@ -68,14 +78,14 @@ const GRAND_STAFF_BRACE_PATH = (topY: number, bottomY: number): string => {
   const height = bottomY - topY;
   return (
     `M 16 ${topY} ` +
-    `C 12 ${topY + height * 0.15}, 6 ${midY - height * 0.1}, 2 ${midY - 3} ` +
-    `L 0 ${midY} ` +
-    `L 2 ${midY + 3} ` +
-    `C 6 ${midY + height * 0.1}, 12 ${bottomY - height * 0.15}, 16 ${bottomY} ` +
-    `C 13 ${bottomY - height * 0.15}, 9 ${midY + height * 0.1}, 6 ${midY + 2} ` +
-    `L 4 ${midY} ` +
-    `L 6 ${midY - 2} ` +
-    `C 9 ${midY - height * 0.1}, 13 ${topY + height * 0.15}, 16 ${topY} Z`
+    `C 16 ${topY + height * 0.16}, 11 ${midY - height * 0.18}, 5 ${midY - 12} ` +
+    `C 3 ${midY - 7}, 2 ${midY - 3}, 0 ${midY} ` +
+    `C 2 ${midY + 3}, 3 ${midY + 7}, 5 ${midY + 12} ` +
+    `C 11 ${midY + height * 0.18}, 16 ${bottomY - height * 0.16}, 16 ${bottomY} ` +
+    `C 13 ${bottomY - height * 0.12}, 8 ${midY + height * 0.14}, 4 ${midY + 7} ` +
+    `C 2 ${midY + 4}, 1 ${midY + 2}, 0 ${midY} ` +
+    `C 1 ${midY - 2}, 2 ${midY - 4}, 4 ${midY - 7} ` +
+    `C 8 ${midY - height * 0.14}, 13 ${topY + height * 0.12}, 16 ${topY} Z`
   );
 };
 
@@ -91,9 +101,20 @@ export default function GrandStaffViewer({
   onNotePress,
   scrollRef,
 }: GrandStaffViewerProps) {
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [viewportWidth, setViewportWidth] = useState(
     Math.max(0, windowWidth - 24),
+  );
+  const [viewportHeight, setViewportHeight] = useState(windowHeight);
+  // Keep noteheads and staff lines at a familiar engraved size on wide screens.
+  // Height is a limit, not a reason to magnify the notation until only one
+  // measure fits on screen.
+  const svgScale = Math.max(
+    0.1,
+    Math.min(
+      (viewportHeight - 28) / TOTAL_SVG_HEIGHT,
+      Math.max(0.85, Math.min(1.2, viewportWidth / 950)),
+    ),
   );
 
   // Compute key signature accidentals
@@ -144,13 +165,13 @@ export default function GrandStaffViewer({
       0,
       Math.min(hymn.totalMeasures - 1, currentMeasure),
     );
-    const safeBeat = Math.max(
-      1,
-      Math.min(hymn.beatsPerMeasure + 1, currentBeat),
-    );
     const measureStartX = headerWidth + safeMeasure * MEASURE_BASE_WIDTH;
-    const beatProgress = (safeBeat - 1) / hymn.beatsPerMeasure;
-    return measureStartX + beatProgress * MEASURE_BASE_WIDTH;
+    return getPlaybackBeatX(
+      measureStartX,
+      MEASURE_BASE_WIDTH,
+      currentBeat,
+      hymn.beatsPerMeasure,
+    );
   }, [
     currentMeasure,
     currentBeat,
@@ -159,45 +180,41 @@ export default function GrandStaffViewer({
     headerWidth,
   ]);
   const playheadAnchorX = viewportWidth / 4;
-  const leadingSpace = Math.max(10, playheadAnchorX - headerWidth);
+  const leadingSpace = Math.max(10, playheadAnchorX - headerWidth * svgScale);
   const trailingSpace = viewportWidth - playheadAnchorX;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!scrollRef?.current) return;
 
     const targetOffset = Math.max(
       0,
-      leadingSpace + playheadX - playheadAnchorX,
+      leadingSpace + playheadX * svgScale - playheadAnchorX,
     );
     scrollRef.current.scrollTo({ x: targetOffset, animated: false });
-  }, [leadingSpace, playheadAnchorX, playheadX, scrollRef]);
+  }, [leadingSpace, playheadAnchorX, playheadX, scrollRef, svgScale]);
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        onLayout={(event) => setViewportWidth(event.nativeEvent.layout.width)}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            minWidth: Math.max(
-              windowWidth,
-              totalSvgWidth + leadingSpace + trailingSpace,
-            ),
-            paddingLeft: leadingSpace,
-            paddingRight: trailingSpace + 10,
-          },
-        ]}
-      >
-        <Svg width={totalSvgWidth} height={TOTAL_SVG_HEIGHT}>
+  // Retain the engraved score between animation frames. Fresh arrays of
+  // unchanged active IDs must not invalidate the cached notation.
+  const trebleActiveKey = JSON.stringify(activeTrebleNoteIds);
+  const bassActiveKey = JSON.stringify(activeBassNoteIds);
+  const trebleActive = useMemo(
+    () => new Set<string>(JSON.parse(trebleActiveKey)), [trebleActiveKey],
+  );
+  const bassActive = useMemo(
+    () => new Set<string>(JSON.parse(bassActiveKey)), [bassActiveKey],
+  );
+  const cursorLayer = (
+          <Rect
+            x={playheadX - 1}
+            y={TREBLE_TOP_Y - 8}
+            width={2}
+            height={BASS_BOTTOM_Y - TREBLE_TOP_Y + 16}
+            fill="#FFD700"
+            opacity={0.5}
+          />  );
+  const notation = useMemo(() => (
+    <G>
           <Defs>
-            <LinearGradient id="playheadBarGrad" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0%" stopColor="#FFD700" stopOpacity={0} />
-              <Stop offset="100%" stopColor="#FFD700" stopOpacity={1} />
-            </LinearGradient>
-
             <LinearGradient id="activeTrebleGrad" x1="0" y1="0" x2="1" y2="1">
               <Stop offset="0%" stopColor="#FFD700" />
               <Stop offset="100%" stopColor="#FACC15" />
@@ -219,22 +236,14 @@ export default function GrandStaffViewer({
             d={GRAND_STAFF_BRACE_PATH(TREBLE_TOP_Y, BASS_BOTTOM_Y)}
             fill="#CBD5E1"
           />
-          {/* Left vertical double bar */}
-          <Line
-            x1={BRACE_WIDTH + 2}
-            y1={TREBLE_TOP_Y}
-            x2={BRACE_WIDTH + 2}
-            y2={BASS_BOTTOM_Y}
-            stroke="#94A3B8"
-            strokeWidth={3}
-          />
+          {/* Opening barline shared by the two staves */}
           <Line
             x1={BRACE_WIDTH + 6}
             y1={TREBLE_TOP_Y}
             x2={BRACE_WIDTH + 6}
             y2={BASS_BOTTOM_Y}
             stroke="#64748B"
-            strokeWidth={1}
+            strokeWidth={1.25}
           />
 
           {/* ── 2. Parallel 5-Line Staves (Treble & Bass) ────────────────────── */}
@@ -249,8 +258,8 @@ export default function GrandStaffViewer({
                   y1={trebleLineY}
                   x2={totalSvgWidth - 20}
                   y2={trebleLineY}
-                  stroke="#475569"
-                  strokeWidth={1.3}
+                  stroke="#64748B"
+                  strokeWidth={1}
                 />
                 {/* Bass Staff Line */}
                 <Line
@@ -258,8 +267,8 @@ export default function GrandStaffViewer({
                   y1={bassLineY}
                   x2={totalSvgWidth - 20}
                   y2={bassLineY}
-                  stroke="#475569"
-                  strokeWidth={1.3}
+                  stroke="#64748B"
+                  strokeWidth={1}
                 />
               </G>
             );
@@ -269,44 +278,24 @@ export default function GrandStaffViewer({
           <G id="clef-and-time-header">
             {/* Treble Clef Symbol (SMuFL Bravura G-Clef aligned to G4-line) */}
             <G
-              transform={`translate(${BRACE_WIDTH + 8}, ${TREBLE_TOP_Y + 3 * LINE_SPACING}) scale(0.048)`}
+              transform={`translate(${BRACE_WIDTH + 8}, ${TREBLE_BOTTOM_Y - LINE_SPACING}) scale(0.032)`}
             >
               <Path d={BRAVURA_GLYPHS.gClef.path} fill="#F8FAFC" />
             </G>
 
             {/* Bass Clef Symbol (SMuFL Bravura F-Clef aligned to F3-line with dots in spaces 3 & 4) */}
             <G
-              transform={`translate(${BRACE_WIDTH + 8}, ${BASS_TOP_Y + LINE_SPACING}) scale(0.048)`}
+              transform={`translate(${BRACE_WIDTH + 8}, ${BASS_TOP_Y + LINE_SPACING}) scale(0.0333)`}
             >
               <Path d={BRAVURA_GLYPHS.fClef.path} fill="#F8FAFC" />
             </G>
 
             {/* Key Signature Accidentals */}
             {keySigGlyphs.treble.map((g, idx) => (
-              <SvgText
-                key={`key-t-${idx}`}
-                x={g.x}
-                y={g.y + 4}
-                fill="#FFD700"
-                fontSize={16}
-                fontWeight="bold"
-                textAnchor="middle"
-              >
-                {g.symbol}
-              </SvgText>
+              <AccidentalGlyph key={`key-t-${idx}`} symbol={g.type === "flat" ? "b" : "#"} x={g.x} y={g.y} color="#CBD5E1" />
             ))}
             {keySigGlyphs.bass.map((g, idx) => (
-              <SvgText
-                key={`key-b-${idx}`}
-                x={g.x}
-                y={g.y + 4}
-                fill="#FFD700"
-                fontSize={16}
-                fontWeight="bold"
-                textAnchor="middle"
-              >
-                {g.symbol}
-              </SvgText>
+              <AccidentalGlyph key={`key-b-${idx}`} symbol={g.type === "flat" ? "b" : "#"} x={g.x} y={g.y} color="#CBD5E1" />
             ))}
 
             {/* Time Signature on Treble Staff (Classical Engraving) */}
@@ -328,6 +317,8 @@ export default function GrandStaffViewer({
             />
           </G>
 
+
+
           {/* ── 4. Measures, Barlines, Notes ─────────────────────────────────── */}
           {measuresData.map(({ measureIndex, treble, bass }) => {
             const measureStartX =
@@ -344,7 +335,7 @@ export default function GrandStaffViewer({
                   x2={measureEndX}
                   y2={BASS_BOTTOM_Y}
                   stroke="#64748B"
-                  strokeWidth={isFinalMeasure ? 3.5 : 1.5}
+                  strokeWidth={isFinalMeasure ? 2.5 : 1}
                 />
                 {isFinalMeasure && (
                   <Line
@@ -372,7 +363,7 @@ export default function GrandStaffViewer({
                     TREBLE_BOTTOM_Y,
                     BASS_BOTTOM_Y,
                   );
-                  const isActive = activeTrebleNoteIds.includes(note.id);
+                  const isActive = trebleActive.has(note.id);
                   const parsed = parsePitch(note.pitch);
 
                   // Calculate ledger lines
@@ -392,8 +383,9 @@ export default function GrandStaffViewer({
                     note.pitch,
                     noteX,
                     noteY,
-                    28,
-                    6,
+                    42,
+                    NOTEHEAD_STEM_X_OFFSET,
+                    NOTEHEAD_STEM_Y_OFFSET,
                   );
 
                   return (
@@ -413,36 +405,23 @@ export default function GrandStaffViewer({
 
                       {/* Note Accidental Symbol (# or b) */}
                       {parsed.accidental && (
-                        <SvgText
-                          x={noteX - 12}
-                          y={noteY + 4}
-                          fill={isActive ? "#FFD700" : "#CBD5E1"}
-                          fontSize={13}
-                          fontWeight="bold"
-                          textAnchor="middle"
-                        >
-                          {parsed.accidental === "#" ? "♯" : "♭"}
-                        </SvgText>
+                        <AccidentalGlyph
+                          symbol={parsed.accidental}
+                          x={noteX - 14}
+                          y={noteY}
+                          color={isActive ? "#FFD700" : "#CBD5E1"}
+                        />
                       )}
 
-                      {/* Notehead */}
-                      <Circle
-                        cx={noteX}
-                        cy={noteY}
-                        r={isActive ? 7.5 : 6}
-                        fill={isActive ? "url(#activeTrebleGrad)" : "#F8FAFC"}
-                        stroke={isActive ? "#FFFFFF" : "#0F172A"}
-                        strokeWidth={isActive ? 2 : 1}
-                      />
-
-                      {/* Note Stem */}
-                      <Line
-                        x1={stem.stemX}
-                        y1={stem.stemStartY}
-                        x2={stem.stemX}
-                        y2={stem.stemEndY}
-                        stroke={isActive ? "#FFD700" : "#F1F5F9"}
-                        strokeWidth={1.8}
+                      <NoteGlyph
+                        x={noteX}
+                        y={noteY}
+                        durationBeats={note.durationBeats}
+                        stem={stem}
+                        staffTopY={TREBLE_TOP_Y}
+                        active={isActive}
+                        activeFill="url(#activeTrebleGrad)"
+                        inactiveFill="#F8FAFC"
                       />
                     </G>
                   );
@@ -463,7 +442,7 @@ export default function GrandStaffViewer({
                     TREBLE_BOTTOM_Y,
                     BASS_BOTTOM_Y,
                   );
-                  const isActive = activeBassNoteIds.includes(note.id);
+                  const isActive = bassActive.has(note.id);
                   const parsed = parsePitch(note.pitch);
 
                   // Calculate ledger lines
@@ -483,8 +462,9 @@ export default function GrandStaffViewer({
                     note.pitch,
                     noteX,
                     noteY,
-                    28,
-                    6,
+                    42,
+                    NOTEHEAD_STEM_X_OFFSET,
+                    NOTEHEAD_STEM_Y_OFFSET,
                   );
 
                   return (
@@ -504,36 +484,23 @@ export default function GrandStaffViewer({
 
                       {/* Note Accidental Symbol (# or b) */}
                       {parsed.accidental && (
-                        <SvgText
-                          x={noteX - 12}
-                          y={noteY + 4}
-                          fill={isActive ? "#FACC15" : "#CBD5E1"}
-                          fontSize={13}
-                          fontWeight="bold"
-                          textAnchor="middle"
-                        >
-                          {parsed.accidental === "#" ? "♯" : "♭"}
-                        </SvgText>
+                        <AccidentalGlyph
+                          symbol={parsed.accidental}
+                          x={noteX - 14}
+                          y={noteY}
+                          color={isActive ? "#FACC15" : "#CBD5E1"}
+                        />
                       )}
 
-                      {/* Notehead */}
-                      <Circle
-                        cx={noteX}
-                        cy={noteY}
-                        r={isActive ? 7.5 : 6}
-                        fill={isActive ? "url(#activeBassGrad)" : "#E2E8F0"}
-                        stroke={isActive ? "#FFFFFF" : "#0F172A"}
-                        strokeWidth={isActive ? 2 : 1}
-                      />
-
-                      {/* Note Stem */}
-                      <Line
-                        x1={stem.stemX}
-                        y1={stem.stemStartY}
-                        x2={stem.stemX}
-                        y2={stem.stemEndY}
-                        stroke={isActive ? "#FACC15" : "#CBD5E1"}
-                        strokeWidth={1.8}
+                      <NoteGlyph
+                        x={noteX}
+                        y={noteY}
+                        durationBeats={note.durationBeats}
+                        stem={stem}
+                        staffTopY={BASS_TOP_Y}
+                        active={isActive}
+                        activeFill="url(#activeBassGrad)"
+                        inactiveFill="#E2E8F0"
                       />
                     </G>
                   );
@@ -542,16 +509,39 @@ export default function GrandStaffViewer({
             );
           })}
 
-          {/* ── 5. Animated Playhead Bar (Aligned through all 3 lanes) ───────── */}
-          <G id="playhead">
-            <Rect
-              x={playheadX - 32}
-              y={TREBLE_TOP_Y - 18}
-              width={32}
-              height={TOTAL_SVG_HEIGHT - TREBLE_TOP_Y - 14}
-              fill="url(#playheadBarGrad)"
-            />
-          </G>
+    </G>
+  ), [bassActive, headerWidth, hymn, keySigGlyphs, measuresData, timeSigX, totalSvgWidth, trebleActive]);
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        onLayout={(event) => {
+          setViewportWidth(event.nativeEvent.layout.width);
+          setViewportHeight(event.nativeEvent.layout.height);
+        }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            minWidth: Math.max(
+              viewportWidth,
+              totalSvgWidth * svgScale + leadingSpace + trailingSpace,
+            ),
+            paddingLeft: leadingSpace,
+            paddingRight: trailingSpace + 10,
+          },
+        ]}
+      >
+        <Svg
+          width={totalSvgWidth * svgScale}
+          height={TOTAL_SVG_HEIGHT * svgScale}
+          viewBox={`0 0 ${totalSvgWidth} ${TOTAL_SVG_HEIGHT}`}
+          preserveAspectRatio="xMinYMid meet"
+        >
+          {cursorLayer}
+          {notation}
         </Svg>
       </ScrollView>
     </View>
@@ -569,7 +559,119 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingVertical: 14,
     paddingRight: 10,
-    alignItems: "flex-start",
-    justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
 });
+
+interface NoteGlyphProps {
+  x: number;
+  y: number;
+  durationBeats: number;
+  stem: ReturnType<typeof getStemGeometry>;
+  staffTopY: number;
+  active: boolean;
+  activeFill: string;
+  inactiveFill: string;
+}
+
+const ACCIDENTAL_GLYPHS: Record<string, BravuraGlyph> = {
+  "#": BRAVURA_NOTE_GLYPHS.accidentalSharp,
+  b: BRAVURA_NOTE_GLYPHS.accidentalFlat,
+  n: BRAVURA_NOTE_GLYPHS.accidentalNatural,
+};
+
+function AccidentalGlyph({
+  symbol,
+  x,
+  y,
+  color,
+}: {
+  symbol: string;
+  x: number;
+  y: number;
+  color: string;
+}) {
+  const glyph = ACCIDENTAL_GLYPHS[symbol];
+  if (!glyph) return null;
+  const scale = LINE_SPACING / BRAVURA_STAFF_SPACE_UNITS;
+  const width = glyph.bounds[2] - glyph.bounds[0];
+
+  return (
+    <G transform={`translate(${x - (width * scale) / 2}, ${y}) scale(${scale}, ${-scale})`}>
+      <Path d={glyph.path} fill={color} />
+    </G>
+  );
+}
+
+function NoteGlyph({
+  x,
+  y,
+  durationBeats,
+  stem,
+  staffTopY,
+  active,
+  activeFill,
+  inactiveFill,
+}: NoteGlyphProps) {
+  const notation = getNoteDurationNotation(durationBeats);
+  const noteFill = active ? activeFill : inactiveFill;
+  const noteheadGlyph = notation.notehead === 'whole'
+    ? BRAVURA_NOTE_GLYPHS.noteheadWhole
+    : notation.notehead === 'half'
+      ? BRAVURA_NOTE_GLYPHS.noteheadHalf
+      : BRAVURA_NOTE_GLYPHS.noteheadBlack;
+  const glyphWidth = noteheadGlyph.bounds[2] - noteheadGlyph.bounds[0];
+  const glyphScale = LINE_SPACING / BRAVURA_STAFF_SPACE_UNITS;
+  const isOnStaffLine = Math.abs(((y - staffTopY) / LINE_SPACING) - Math.round((y - staffTopY) / LINE_SPACING)) < 0.001;
+  const dotY = isOnStaffLine ? y - LINE_SPACING / 2 : y;
+  const flagsUp = [
+    BRAVURA_NOTE_GLYPHS.flag8thUp,
+    BRAVURA_NOTE_GLYPHS.flag16thUp,
+    BRAVURA_NOTE_GLYPHS.flag32ndUp,
+    BRAVURA_NOTE_GLYPHS.flag64thUp,
+    BRAVURA_NOTE_GLYPHS.flag128thUp,
+  ];
+  const flagsDown = [
+    BRAVURA_NOTE_GLYPHS.flag8thDown,
+    BRAVURA_NOTE_GLYPHS.flag16thDown,
+    BRAVURA_NOTE_GLYPHS.flag32ndDown,
+    BRAVURA_NOTE_GLYPHS.flag64thDown,
+    BRAVURA_NOTE_GLYPHS.flag128thDown,
+  ];
+  const flagGlyph = notation.flags > 0
+    ? (stem.direction === 'up' ? flagsUp : flagsDown)[Math.min(notation.flags, 5) - 1]
+    : undefined;
+
+  return (
+    <G>
+      {notation.hasStem && (
+        <Line
+          x1={stem.stemX}
+          y1={stem.stemStartY}
+          x2={stem.stemX}
+          y2={stem.stemEndY}
+          stroke={active ? '#FFD700' : inactiveFill}
+          strokeWidth={1.4}
+        />
+      )}
+      <G transform={`translate(${x - (glyphWidth * glyphScale) / 2}, ${y}) scale(${glyphScale}, ${-glyphScale})`}>
+        <Path d={noteheadGlyph.path} fill={noteFill} />
+      </G>
+      {Array.from({ length: notation.dots }).map((_, index) => (
+        <Circle
+          key={`dot-${index}`}
+          cx={x + 12 + index * 5}
+          cy={dotY}
+          r={1.8}
+          fill={active ? '#FFD700' : inactiveFill}
+        />
+      ))}
+      {flagGlyph && (
+        <G transform={`translate(${stem.stemX}, ${stem.stemEndY}) scale(${glyphScale}, ${-glyphScale})`}>
+          <Path d={flagGlyph.path} fill={active ? '#FFD700' : inactiveFill} />
+        </G>
+      )}
+    </G>
+  );
+}

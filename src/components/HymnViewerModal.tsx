@@ -1,4 +1,4 @@
-import AdaptiveChip from "@/src/components/adaptive/AdaptiveChip";
+import SpeedSlider, { formatSpeedMultiplier } from "@/src/components/adaptive/SpeedSlider";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -9,14 +9,20 @@ import {
     StyleSheet,
     Text,
     View,
+    useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getGrandStaffHymn, GRAND_STAFF_HYMNS } from "../data/hymnData";
+import { getGrandStaffHymn } from "../data/hymnData";
+import { LDS_MUSIC_DATABASE } from "../data/musicData";
 import {
     AudioPlaybackState,
     grandStaffAudio,
 } from "../services/grandStaffAudio";
-import { getElevation, interaction } from "../theme/platformDesign";
+import {
+    getElevation,
+    interaction,
+    radius
+} from "../theme/platformDesign";
 import type { ClefNote, GrandStaffHymn } from "../types/music";
 import GrandStaffViewer from "./GrandStaffViewer";
 
@@ -28,12 +34,7 @@ export interface HymnViewerModalProps {
   onClose: () => void;
 }
 
-const TEMPO_SPEEDS = [
-  { label: "0.75×", value: 0.75 },
-  { label: "1.0×", value: 1.0 },
-  { label: "1.25×", value: 1.25 },
-  { label: "1.5×", value: 1.5 },
-];
+const SPEED_NOTCH_VALUES = [0.5, 0.75, 1.0, 1.25, 1.5];
 
 export default function HymnViewerModal({
   hymnIdOrNumber,
@@ -41,12 +42,25 @@ export default function HymnViewerModal({
   onClose,
 }: HymnViewerModalProps) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isPortraitWeb = Platform.OS === "web" && windowWidth <= windowHeight;
   const scrollRef = useRef<ScrollView | null>(null);
 
   const hymn: GrandStaffHymn | undefined = useMemo(() => {
-    if (!hymnIdOrNumber) return undefined;
-    return getGrandStaffHymn(hymnIdOrNumber) ?? GRAND_STAFF_HYMNS[0];
+    if (hymnIdOrNumber == null) return undefined;
+    return getGrandStaffHymn(hymnIdOrNumber);
   }, [hymnIdOrNumber]);
+
+  const selectedSongTitle = useMemo(() => {
+    if (hymn) return hymn.title;
+    if (hymnIdOrNumber == null) return "Selected song";
+    const selectedSong = LDS_MUSIC_DATABASE.find(
+      (song) =>
+        song.id.toLowerCase() === String(hymnIdOrNumber).toLowerCase() ||
+        String(song.number) === String(hymnIdOrNumber),
+    );
+    return selectedSong?.title ?? "Selected song";
+  }, [hymn, hymnIdOrNumber]);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [tempoMultiplier, setTempoMultiplier] = useState(1.0);
@@ -65,10 +79,10 @@ export default function HymnViewerModal({
 
   // Stop + reset when modal closes
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !hymn) {
       grandStaffAudio.stop();
     }
-  }, [isOpen, hymnIdOrNumber]);
+  }, [isOpen, hymn, hymnIdOrNumber]);
 
   // Audio tick handler
   const handleTick = useCallback((state: AudioPlaybackState) => {
@@ -192,7 +206,55 @@ export default function HymnViewerModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleClose, handleTogglePlay, handleStepMeasure]);
 
-  if (!isOpen || !hymn) return null;
+  if (!isOpen) return null;
+
+  if (!hymn) {
+    return (
+      <Modal
+        visible={isOpen}
+        animationType="slide"
+        transparent={false}
+        statusBarTranslucent={true}
+        supportedOrientations={["landscape-left", "landscape-right"]}
+        onRequestClose={handleClose}
+      >
+        <View
+          style={[
+            styles.root,
+            styles.unavailableContainer,
+            {
+              paddingTop: insets.top + 24,
+              paddingBottom: insets.bottom + 24,
+              paddingLeft: insets.left + 24,
+              paddingRight: insets.right + 24,
+            },
+            isPortraitWeb && styles.hidden,
+          ]}
+          accessibilityElementsHidden={isPortraitWeb}
+          importantForAccessibility={isPortraitWeb ? "no-hide-descendants" : "auto"}
+        >
+          <Text style={styles.unavailableTitle}>{selectedSongTitle}</Text>
+          <Text style={styles.unavailableBody} accessibilityRole="alert">
+            Sheet music for this song isn’t available yet. Choose another song to practice.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.unavailableButton, pressed && { opacity: 0.8 }]}
+            onPress={handleClose}
+            accessibilityRole="button"
+            accessibilityLabel="Choose another song"
+          >
+            <Text style={styles.unavailableButtonText}>Choose another song</Text>
+          </Pressable>
+        </View>
+        {isPortraitWeb && (
+          <View style={styles.orientationPrompt}>
+            <Text style={styles.orientationPromptTitle}>Turn your screen sideways</Text>
+            <Text style={styles.orientationPromptBody}>Behold sheet music works in landscape.</Text>
+          </View>
+        )}
+      </Modal>
+    );
+  }
 
   // Controls visible only when paused
   const showExpandedControls = !isPlaying;
@@ -203,6 +265,7 @@ export default function HymnViewerModal({
       animationType="slide"
       transparent={false}
       statusBarTranslucent={true}
+      supportedOrientations={["landscape-left", "landscape-right"]}
       onRequestClose={handleClose}
     >
       <View style={styles.root}>
@@ -210,89 +273,100 @@ export default function HymnViewerModal({
         <View
           style={[
             styles.topBar,
+            isPortraitWeb && styles.hidden,
+            { paddingLeft: insets.left + 16, paddingRight: insets.right + 16 },
             { paddingTop: insets.top + 8 },
             getElevation(isIOS ? 0 : 3),
           ]}
+          accessibilityElementsHidden={isPortraitWeb}
+          importantForAccessibility={isPortraitWeb ? "no-hide-descendants" : "auto"}
         >
-          {/* Song identity */}
-          <View style={styles.identity}>
-            <View style={styles.numBadge}>
-              <Text style={styles.numBadgeText}>#{hymn.number}</Text>
+          <View style={styles.headerRow}>
+            {/* Song identity */}
+            <View style={styles.identity}>
+              <View style={styles.numBadge}>
+                <Text style={styles.numBadgeText}>#{hymn.number}</Text>
+              </View>
+              <View style={styles.titleBlock}>
+                <Text style={styles.titleText} numberOfLines={1}>
+                  {hymn.title}
+                </Text>
+                <Text style={styles.subtitleText} numberOfLines={1}>
+                  {hymn.book} • Key of {hymn.keySignature}
+                </Text>
+              </View>
             </View>
-            <View style={styles.titleBlock}>
-              <Text style={styles.titleText} numberOfLines={1}>
-                {hymn.title}
-              </Text>
-              <Text style={styles.subtitleText} numberOfLines={1}>
-                {hymn.book} • Key of {hymn.keySignature}
-              </Text>
-            </View>
-          </View>
 
-          {/* Right controls – context-sensitive */}
-          <View style={styles.controlsRow}>
-            {/* Speed chips + exit – only when paused */}
             {showExpandedControls && (
-              <>
-                <View style={styles.speedChips}>
-                  {TEMPO_SPEEDS.map((spd) => (
-                    <AdaptiveChip
-                      key={spd.value}
-                      label={spd.label}
-                      selected={tempoMultiplier === spd.value}
-                      onPress={() => handleTempoChange(spd.value)}
-                      selectedColor="#FFD700"
-                      selectedTextColor="#000000"
-                      style={styles.speedChip}
-                    />
-                  ))}
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.playPauseBtn,
-                    isIOS && pressed && { opacity: interaction.pressOpacity },
-                  ]}
-                  onPress={handleClose}
-                  android_ripple={
-                    interaction.useRipple
-                      ? { color: "rgba(0,0,0,0.15)", borderless: false }
-                      : undefined
-                  }
-                  accessibilityLabel="Exit"
-                >
-                  <Ionicons name="close" size={24} color="#000000" />
-                </Pressable>
-              </>
+              <SpeedSlider
+                value={tempoMultiplier}
+                onValueChange={handleTempoChange}
+                notchValues={SPEED_NOTCH_VALUES}
+                leftLabel={formatSpeedMultiplier(tempoMultiplier)}
+                leftLabelContainerStyle={styles.speedLabelContainer}
+                style={styles.speedSlider}
+                trackColor="#334155"
+                thumbColor="#FFD700"
+                activeTrackColor="#FFD700"
+                notchColor="#94A3B8"
+              />
             )}
 
-            {/* Play / Pause – always visible */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.playPauseBtn,
-                isPlaying && styles.playPauseBtnActive,
-                isIOS && pressed && { opacity: interaction.pressOpacity },
-              ]}
-              onPress={handleTogglePlay}
-              android_ripple={
-                interaction.useRipple
-                  ? { color: "rgba(0,0,0,0.15)", borderless: false }
-                  : undefined
-              }
-              accessibilityLabel={isPlaying ? "Pause" : "Play"}
-            >
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={24}
-                color="#000000"
-                style={!isPlaying ? { marginLeft: 2 } : undefined}
-              />
-            </Pressable>
+            {/* Right controls – context-sensitive */}
+            <View style={styles.controlsRow}>
+              {/* Exit – only when paused */}
+              {showExpandedControls && (
+                <>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.playPauseBtn,
+                      isIOS && pressed && { opacity: interaction.pressOpacity },
+                    ]}
+                    onPress={handleClose}
+                    android_ripple={
+                      interaction.useRipple
+                        ? { color: "rgba(0,0,0,0.15)", borderless: false }
+                        : undefined
+                    }
+                    accessibilityLabel="Exit"
+                  >
+                    <Ionicons name="close" size={24} color="#000000" />
+                  </Pressable>
+                </>
+              )}
+
+              {/* Play / Pause – always visible */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.playPauseBtn,
+                  isPlaying && styles.playPauseBtnActive,
+                  isIOS && pressed && { opacity: interaction.pressOpacity },
+                ]}
+                onPress={handleTogglePlay}
+                android_ripple={
+                  interaction.useRipple
+                    ? { color: "rgba(0,0,0,0.15)", borderless: false }
+                    : undefined
+                }
+                accessibilityLabel={isPlaying ? "Pause" : "Play"}
+              >
+                <Ionicons
+                  name={isPlaying ? "pause" : "play"}
+                  size={24}
+                  color="#000000"
+                  style={!isPlaying ? { marginLeft: 2 } : undefined}
+                />
+              </Pressable>
+            </View>
           </View>
         </View>
 
         {/* ── SHEET MUSIC VIEWPORT ─────────────────────────────────────────── */}
-        <View style={styles.viewport}>
+        <View
+          style={[styles.viewport, isPortraitWeb && styles.hidden, { paddingLeft: insets.left + 12, paddingRight: insets.right + 12, paddingBottom: insets.bottom + 12 }]}
+          accessibilityElementsHidden={isPortraitWeb}
+          importantForAccessibility={isPortraitWeb ? "no-hide-descendants" : "auto"}
+        >
           <GrandStaffViewer
             hymn={hymn}
             currentMeasure={playbackState.currentMeasure}
@@ -306,6 +380,12 @@ export default function HymnViewerModal({
             scrollRef={scrollRef}
           />
         </View>
+        {isPortraitWeb && (
+          <View style={styles.orientationPrompt}>
+            <Text style={styles.orientationPromptTitle}>Turn your screen sideways</Text>
+            <Text style={styles.orientationPromptBody}>Behold sheet music works in landscape.</Text>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -321,9 +401,7 @@ const styles = StyleSheet.create({
   /* ── TOP BAR ─────────────────────────────────────────────────────────── */
   topBar: {
     width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
     paddingHorizontal: 16,
     paddingBottom: 12,
     backgroundColor: "#1E293B",
@@ -331,19 +409,28 @@ const styles = StyleSheet.create({
     borderBottomColor: "#334155",
     zIndex: 50,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   identity: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: 12,
+    marginRight: 0,
     minWidth: 0,
+    flexBasis: 120,
   },
   numBadge: {
     backgroundColor: "#FFD700",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: isIOS ? 8 : 6,
+    borderRadius: isIOS ? 22 : radius.small,
     marginRight: 10,
+    height: isIOS ? 44 : 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   numBadgeText: {
     color: "#000000",
@@ -370,21 +457,21 @@ const styles = StyleSheet.create({
   controlsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
+    flexShrink: 0,
   },
-  speedChips: {
-    flexDirection: "row",
-    gap: 4,
+  speedSlider: {
+    flex: 1,
+    flexBasis: 116,
+    minWidth: 116,
+    minHeight: 48,
   },
-  speedChip: {
-    width: 48,
-    height: 48,
-    paddingHorizontal: 0,
-  },
+  speedLabelContainer: { minWidth: 40 },
+  hidden: { display: "none" },
   playPauseBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: isIOS ? 24 : 14,
+    width: isIOS ? 44 : 40,
+    height: isIOS ? 44 : 40,
+    borderRadius: isIOS ? 22 : radius.small,
     backgroundColor: "#FFD700",
     justifyContent: "center",
     alignItems: "center",
@@ -404,5 +491,61 @@ const styles = StyleSheet.create({
   viewport: {
     flex: 1,
     padding: 12,
+  },
+  orientationPrompt: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: "#0F172A",
+  },
+  orientationPromptTitle: {
+    color: "#FFD700",
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  orientationPromptBody: {
+    color: "#FFFFFF",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  unavailableContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  unavailableTitle: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  unavailableBody: {
+    color: "#94A3B8",
+    fontSize: 16,
+    lineHeight: 24,
+    marginTop: 12,
+    maxWidth: 420,
+    textAlign: "center",
+  },
+  unavailableButton: {
+    minHeight: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFD700",
+    borderRadius: radius.small,
+    marginTop: 24,
+    paddingHorizontal: 20,
+  },
+  unavailableButtonText: {
+    color: "#000000",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

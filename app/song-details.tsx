@@ -1,7 +1,7 @@
 import AdaptiveButton from "@/src/components/adaptive/AdaptiveButton";
 import AdaptiveCard from "@/src/components/adaptive/AdaptiveCard";
-import AdaptiveChip from "@/src/components/adaptive/AdaptiveChip";
 import AdaptiveHeader from "@/src/components/adaptive/AdaptiveHeader";
+import SpeedSlider, { formatSpeedMultiplier } from "@/src/components/adaptive/SpeedSlider";
 import HymnViewerModal from "@/src/components/HymnViewerModal";
 import SvgSheetCanvas from "@/src/components/SvgSheetCanvas";
 import { useBeholdTheme } from "@/src/context/ThemeContext";
@@ -31,12 +31,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const isIOS = Platform.OS === "ios";
 const { width: WINDOW_WIDTH } = Dimensions.get("window");
 
-const TEMPO_SPEEDS = [
-  { label: "0.75x", value: 0.75 },
-  { label: "1.0x", value: 1.0 },
-  { label: "1.25x", value: 1.25 },
-  { label: "1.5x", value: 1.5 },
-];
+const SPEED_NOTCH_VALUES = [0.5, 0.75, 1.0, 1.25, 1.5];
 
 export default function SongDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -274,26 +269,19 @@ export default function SongDetailsScreen() {
           </View>
         </View>
 
-        {/* Speed Selector Chips */}
+        {/* Speed Selector Slider */}
         <View style={styles.toolbarSpeedGroup}>
-          <Text
-            style={[typography.caption, { color: colors.onSurfaceVariant }]}
-          >
-            {Math.round(song.tempoBpm * tempoMultiplier)} BPM
-          </Text>
-          <View style={styles.speedChipsWrap}>
-            {TEMPO_SPEEDS.map((spd) => (
-              <AdaptiveChip
-                key={spd.value}
-                label={spd.label}
-                selected={tempoMultiplier === spd.value}
-                onPress={() => setTempoMultiplier(spd.value)}
-                selectedColor={colors.accent}
-                selectedTextColor="#0F172A"
-                style={styles.speedChip}
-              />
-            ))}
-          </View>
+          <SpeedSlider
+            value={tempoMultiplier}
+            onValueChange={setTempoMultiplier}
+            notchValues={SPEED_NOTCH_VALUES}
+            leftLabel={formatSpeedMultiplier(tempoMultiplier)}
+            style={styles.speedSlider}
+            trackColor={colors.border}
+            thumbColor={colors.accent}
+            activeTrackColor={colors.accent}
+            notchColor={colors.onSurfaceVariant}
+          />
         </View>
       </View>
 
@@ -489,14 +477,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    height: isIOS ? 44 : 40, // Match button height
   },
-  speedChipsWrap: {
-    flexDirection: "row",
-    gap: 4,
-  },
-  speedChip: {
-    height: 26,
-    paddingHorizontal: 8,
+  speedSlider: {
+    flex: 1,
+    height: isIOS ? 44 : 40,
   },
   mainScrollView: {
     flex: 1,
